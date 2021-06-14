@@ -1,13 +1,13 @@
 export interface UserChangeEmail {
   oldEmail: string;
   newEmail: string;
-  id: string;
+  userId: string;
 }
 
 export interface UserChangePassword {
   oldPassword: string;
   newPassword: string;
-  id: string;
+  userId: string;
 }
 
 export interface UserAddOrUpdateOptionalData {
@@ -15,5 +15,5 @@ export interface UserAddOrUpdateOptionalData {
   lastName: string;
   birthday: string;
   phoneNumber: string;
-  id: string;
+  userId: string;
 }

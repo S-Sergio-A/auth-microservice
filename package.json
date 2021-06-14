@@ -25,6 +25,8 @@
     "@nestjs/core": "^7.6.17",
     "@nestjs/mongoose": "^7.2.4",
     "@nestjs/platform-express": "^7.6.17",
+    "@nestjs/swagger": "^4.8.0",
+    "@nestjs/throttler": "^1.1.4",
     "argon2": "^0.28.2",
     "body-parser": "^1.19.0",
     "class-transformer": "^0.4.0",
@@ -42,6 +44,7 @@
     "rimraf": "^3.0.2",
     "rxjs": "^6.6.6",
     "typeorm": "^0.2.34",
+    "uuid": "^8.3.2",
     "validator": "^13.6.0",
     "winston": "^3.3.3"
   },

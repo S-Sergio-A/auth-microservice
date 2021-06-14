@@ -1,4 +1,4 @@
-import {ClientJWTData, UserJWTData} from "./interfaces/IToken";
+import {ClientJWTData, UserJWTData} from "./interfaces/token.service.interface";
 
 declare global {
   namespace Express {

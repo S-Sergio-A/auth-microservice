@@ -1,6 +1,17 @@
-export interface User {
+import { Document } from 'mongoose';
+
+export interface User extends Document{
   email: string;
   username: string;
   password: string;
-  id?: string;
+  userId: string;
+  isActive: boolean;
+  firstName?: string;
+  lastName?: string;
+  birthday?: string;
+  phoneNumber?: string;
+  verification: boolean;
+  verificationExpires: number;
+  loginAttempts?: number;
+  blockExpires?: number;
 }
