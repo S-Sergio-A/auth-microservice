@@ -1,4 +1,4 @@
-import {createLogger, LoggerOptions, transports, format} from 'winston';
+import { createLogger, LoggerOptions, transports, format } from 'winston';
 
 const options = {
   file: {
@@ -8,25 +8,25 @@ const options = {
     json: true,
     maxsize: 5242880,
     maxFiles: 5,
-    colorize: false
+    colorize: false,
   },
   console: {
     level: 'debug',
     handleExceptions: true,
     json: false,
-    colorize: true
-  }
+    colorize: true,
+  },
 };
 
 const loggerOptions: LoggerOptions = {
   level: 'info',
   format: format.json(),
   transports: [
-    new transports.File({filename: 'error.log', level: 'error'}),
-    new transports.File({filename: 'combined.log'}),
-    new transports.Console(options.console)
+    new transports.File({ filename: 'error.log', level: 'error' }),
+    new transports.File({ filename: 'combined.log' }),
+    new transports.Console(options.console),
   ],
-  exitOnError: false
+  exitOnError: false,
 };
 
 const logger = createLogger(loggerOptions);

@@ -5,7 +5,7 @@ export class RefreshTokenDto {
   @ApiProperty({
     description: 'Refresh token UUID',
     format: 'uuid',
-    uniqueItems: true,
+    uniqueItems: true
   })
   @IsNotEmpty()
   @IsUUID()

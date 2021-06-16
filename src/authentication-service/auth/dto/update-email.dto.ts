@@ -8,7 +8,7 @@ export class UserChangeEmailDto {
     format: 'email',
     uniqueItems: true,
     minLength: 6,
-    maxLength: 254,
+    maxLength: 254
   })
   @IsDefined()
   @IsNotEmpty()
@@ -21,7 +21,7 @@ export class UserChangeEmailDto {
     format: 'email',
     uniqueItems: true,
     minLength: 6,
-    maxLength: 254,
+    maxLength: 254
   })
   @IsDefined()
   @IsNotEmpty()

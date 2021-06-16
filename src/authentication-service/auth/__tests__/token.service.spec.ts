@@ -1,8 +1,8 @@
-import {TokenService} from "../services/token.service";
+import {TokenService} from "../services/token/token.service";
 import {RefreshSessionDocument} from "../schemas/refreshSession.schema";
 import {Model} from "mongoose";
 import {Test, TestingModule} from "@nestjs/testing";
-import {JWTTokens} from "../interfaces/token.service.interface";
+import {JWTTokens} from "../services/token/interfaces/token.service.interface";
 import {INestApplication} from "@nestjs/common";
 
 describe('TokenService', () => {

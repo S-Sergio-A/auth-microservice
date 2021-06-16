@@ -5,7 +5,7 @@ export class VerifyUuidDto {
   @ApiProperty({
     description: 'uuid to verify user',
     format: 'uuid',
-    uniqueItems: true,
+    uniqueItems: true
   })
   @IsNotEmpty()
   @IsUUID()

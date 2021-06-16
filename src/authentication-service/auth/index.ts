@@ -1,8 +1,5 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import container from './inversify.config';
-import {RegistrableController} from './controller/RegisterableController';
-import {TYPES} from './controllers/types';
 import cors from 'cors';
 import helmet from "helmet";
 import morgan from 'morgan';
@@ -37,11 +34,8 @@ createConnection()
     app.use(bodyParser.urlencoded({extended: true}));
     app.use(morgan('combined', {stream: winston.stream}));
     
-    app.use("/", routes);
 
 // grabs the Controller from IoC container and registers all the endpoints
-    const controllers: RegistrableController[] = container.getAll<RegistrableController>(TYPES.Controller);
-    controllers.forEach(controller => controller.register(app));
     
     try {
       app.listen((process.env.PORT || 5000), () => {

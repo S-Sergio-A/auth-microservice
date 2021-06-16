@@ -1,20 +1,14 @@
-import {
-  IsDefined,
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  IsOptional,
-} from 'class-validator';
+import { IsDefined, IsEmail, IsNotEmpty, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class LoginDto {
+export class LoginByEmailDto {
   @ApiProperty({
     example: 'petroshrekovenko@gmail.com',
     description: 'The email of the User.',
     format: 'email',
     uniqueItems: true,
     minLength: 6,
-    maxLength: 254,
+    maxLength: 254
   })
   @IsDefined()
   @IsNotEmpty()
@@ -22,11 +16,25 @@ export class LoginDto {
   email: string;
 
   @ApiProperty({
+    example: 'Secret password.',
+    description: 'The password of the User.',
+    format: 'string',
+    minLength: 8,
+    maxLength: 50
+  })
+  @IsDefined()
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+}
+
+export class LoginByUsernameDto {
+  @ApiProperty({
     example: 'PetroShrekovenko.',
     description: 'The username of the User.',
     format: 'string',
     minLength: 4,
-    maxLength: 30,
+    maxLength: 30
   })
   @IsDefined()
   @IsNotEmpty()
@@ -39,7 +47,7 @@ export class LoginDto {
     description: 'The password of the User.',
     format: 'string',
     minLength: 8,
-    maxLength: 50,
+    maxLength: 50
   })
   @IsDefined()
   @IsNotEmpty()

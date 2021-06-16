@@ -1,11 +1,4 @@
-import {
-  IsDate,
-  IsDefined,
-  IsNotEmpty,
-  IsOptional,
-  IsPhoneNumber,
-  IsString,
-} from 'class-validator';
+import { IsDate, IsDefined, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class AddOrUpdateOptionalDataDto {
@@ -14,7 +7,7 @@ export class AddOrUpdateOptionalDataDto {
     description: 'The first name of the User.',
     format: 'string',
     minLength: 1,
-    maxLength: 50,
+    maxLength: 50
   })
   @IsDefined()
   @IsNotEmpty()
@@ -27,7 +20,7 @@ export class AddOrUpdateOptionalDataDto {
     description: 'The last name of the User.',
     format: 'string',
     minLength: 1,
-    maxLength: 50,
+    maxLength: 50
   })
   @IsDefined()
   @IsNotEmpty()
@@ -40,20 +33,20 @@ export class AddOrUpdateOptionalDataDto {
     description: 'The birthday of the User.',
     format: 'date',
     minLength: 10,
-    maxLength: 10,
+    maxLength: 10
   })
   @IsDefined()
   @IsNotEmpty()
   @IsDate()
   @IsOptional()
-  birthday: string;
+  birthday: Date;
 
   @ApiProperty({
     example: '+380501224456, or +380 (050) 122-44-56.',
     description: 'The mobile phone number of the User.',
     format: 'string',
     minLength: 12,
-    maxLength: 20,
+    maxLength: 20
   })
   @IsDefined()
   @IsNotEmpty()

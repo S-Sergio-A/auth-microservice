@@ -7,7 +7,7 @@ export class UserChangePasswordDto {
     description: 'The password of the User.',
     format: 'string',
     minLength: 8,
-    maxLength: 50,
+    maxLength: 50
   })
   @IsDefined()
   @IsNotEmpty()
@@ -20,7 +20,7 @@ export class UserChangePasswordDto {
     description: 'The password of the User.',
     format: 'string',
     minLength: 8,
-    maxLength: 50,
+    maxLength: 50
   })
   @IsDefined()
   @IsNotEmpty()

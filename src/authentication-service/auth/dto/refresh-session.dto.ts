@@ -1,11 +1,4 @@
-import {
-  IsDefined,
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  IsUUID,
-  Length,
-} from 'class-validator';
+import { IsDefined, IsNotEmpty, IsNumber, IsString, IsUUID, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RefreshSessionDto {
@@ -15,7 +8,7 @@ export class RefreshSessionDto {
     format: 'string',
     uniqueItems: true,
     minLength: 32,
-    maxLength: 32,
+    maxLength: 32
   })
   @IsDefined()
   @IsNotEmpty()
@@ -39,7 +32,7 @@ export class RefreshSessionDto {
     example: '::ffff:10.10.227.188',
     description: 'The ip-address of the User.',
     format: 'string',
-    uniqueItems: true,
+    uniqueItems: true
   })
   @IsDefined()
   @IsNotEmpty()
@@ -47,11 +40,10 @@ export class RefreshSessionDto {
   readonly ip: string;
 
   @ApiProperty({
-    example:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36',
+    example: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36',
     description: 'The user-agent of the User.',
     format: 'email',
-    uniqueItems: true,
+    uniqueItems: true
   })
   @IsDefined()
   @IsNotEmpty()
@@ -64,7 +56,7 @@ export class RefreshSessionDto {
     format: 'string',
     uniqueItems: true,
     minLength: 20,
-    maxLength: 20,
+    maxLength: 20
   })
   @IsDefined()
   @IsNotEmpty()
@@ -78,7 +70,7 @@ export class RefreshSessionDto {
     format: 'number',
     uniqueItems: true,
     minLength: 13,
-    maxLength: 13,
+    maxLength: 13
   })
   @IsDefined()
   @IsNotEmpty()
@@ -92,7 +84,7 @@ export class RefreshSessionDto {
     format: 'email',
     uniqueItems: true,
     minLength: 13,
-    maxLength: 13,
+    maxLength: 13
   })
   @IsDefined()
   @IsNotEmpty()
