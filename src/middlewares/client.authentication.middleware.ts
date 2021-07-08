@@ -1,28 +1,27 @@
 import { HttpException } from "@nestjs/common/exceptions/http.exception";
 import { NestMiddleware, HttpStatus, Injectable } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
-import { UserService } from "../user/user.service";
 import { AuthService } from "../auth/services/auth.service";
+import { ClientService } from "../client/client.service";
 
 @Injectable()
 export class ClientAuthMiddleware implements NestMiddleware {
-  constructor(private readonly authService: AuthService, private readonly userService: UserService) {}
+  constructor(private readonly authService: AuthService, private readonly clientService: ClientService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const accessToken = req.headers["access-token"];
+    const clientToken = req.headers["client-token"];
 
-    if (accessToken) {
-      await this.authService.verifyToken(req);
-      const userId = req.user.userId;
+    if (clientToken) {
+      await this.authService.verifyClientsToken(req);
+      const clientId = req.client.clientId;
+      const client = await this.clientService._findById(clientId);
 
-      const user = await this.userService._findById(userId);
-
-      if (!user) {
-        throw new HttpException("User not found.", HttpStatus.UNAUTHORIZED);
+      if (!client) {
+        throw new HttpException("Please, reload the page.", HttpStatus.UNAUTHORIZED);
       }
       next();
     } else {
-      throw new HttpException("Not authorized.", HttpStatus.UNAUTHORIZED);
+      throw new HttpException("Please, reload the page.", HttpStatus.UNAUTHORIZED);
     }
   }
 }

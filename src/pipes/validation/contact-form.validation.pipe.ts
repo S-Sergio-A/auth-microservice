@@ -4,8 +4,6 @@ import { ValidationException } from "../../exceptions/Validation.exception";
 
 @Injectable()
 export class ContactFormValidationPipe implements PipeTransform {
-  constructor(private readonly validation: ValidationService) {}
-
   async transform(value, metadata: ArgumentMetadata) {
     if (!value) {
       throw new BadRequestException("No data submitted");
@@ -15,7 +13,7 @@ export class ContactFormValidationPipe implements PipeTransform {
       return value;
     }
 
-    const { errors, isValid } = await this.validation.validateContactForm(value);
+    const { errors, isValid } = await ValidationService.prototype.validateContactForm(value);
 
     if (isValid) {
       return value;
