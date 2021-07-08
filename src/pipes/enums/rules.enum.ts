@@ -8,7 +8,6 @@ export enum RulesEnum {
   EMAIL_LOCAL_OR_DOMAIN_PART_MIN_LENGTH = "1",
   EMAIL_LOCAL_PART_MAX_LENGTH = "63",
   EMAIL_DOMAIN_PART_MAX_LENGTH = "190",
-  WORD_VALIDATION = "/[a-zA-Zа-яА-ЯҐґЄєІіЇї- ]+/",
   FIRST_AND_LAST_NAME_WHITELIST_SYMBOLS = "^[a-zA-Zа-яА-ЯЁёҐґЄєІіЇїs-]{1,50}$",
   PASSWORD_WHITELIST_SYMBOLS = "/^[dw%@?№$^]$/"
 }
