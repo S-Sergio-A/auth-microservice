@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, UseFilters } from "@nestjs/common";
+import { HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Request } from "express";
 import { Model } from "mongoose";
@@ -10,7 +10,6 @@ import { RefreshSessionDto } from "../dto/refresh-session.dto";
 import { ClientJWTData, JWTTokens } from "./interfaces/jwt-token.interface";
 import { SessionData } from "./interfaces/session-data.interface";
 import { RefreshSessionDocument } from "../schemas/refreshSession.schema";
-import { RequestBodyExceptionFilter } from "../../exceptions/filters/RequestBody.exception-filter";
 
 const jwt = require("jsonwebtoken");
 const ms = require("ms");
@@ -246,7 +245,7 @@ export class AuthService {
 
     if (typeof req.headers["client-token"] === "string") {
       token = req.headers["client-token"].split('"').join("") || req.cookies.clientsToken;
-    } else if (Array.isArray(req.headers["access-token"])) {
+    } else if (Array.isArray(req.headers["client-token"])) {
       throw new RequestBodyException({
         key: "CLIENT_TOKEN_NOT_PROVIDED",
         code: TokenErrorCodes.CLIENT_TOKEN_NOT_PROVIDED.code,
@@ -273,7 +272,6 @@ export class AuthService {
   }
 
   async generateClientsJWT(clientSession: ClientJWTData) {
-    const token = await this._generateClientsAccessToken(clientSession.clientId, clientSession.ip);
-    return { token, success: true };
+    return await this._generateClientsAccessToken(clientSession.clientId, clientSession.ip);
   }
 }

@@ -4,8 +4,10 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { UserAuthenticationMiddleware } from "./middlewares/user.authentication.middleware";
+import { ClientAuthMiddleware } from "./middlewares/client.authentication.middleware";
 import { ValidationModule } from "./pipes/validation.module";
 import { UserController } from "./user/user.controller";
+import { ClientModule } from "./client/client.module";
 import { AuthModule } from "./auth/auth.module";
 import { UserModule } from "./user/user.module";
 
@@ -22,7 +24,8 @@ import { UserModule } from "./user/user.module";
     }),
     ValidationModule,
     AuthModule,
-    UserModule
+    UserModule,
+    ClientModule
   ],
   controllers: [UserController],
   providers: [
@@ -37,11 +40,13 @@ export class AppModule implements NestModule {
     consumer
       .apply(UserAuthenticationMiddleware)
       .exclude(
-        { path: "/user/sign-up", method: RequestMethod.POST },
-        { path: "/user/login", method: RequestMethod.POST },
-        { path: "/user/forgot-password", method: RequestMethod.POST },
-        { path: "/user/forgot-password-verify", method: RequestMethod.PUT }
+        { path: "/user/sign-up", method: RequestMethod.ALL },
+        { path: "/user/login", method: RequestMethod.ALL },
+        { path: "/user/forgot-password", method: RequestMethod.ALL },
+        { path: "/user/forgot-password-verify", method: RequestMethod.ALL }
       )
-      .forRoutes(UserController);
+      .forRoutes(UserController)
+      .apply(ClientAuthMiddleware)
+      .forRoutes({ path: "client/contact", method: RequestMethod.ALL });
   }
 }

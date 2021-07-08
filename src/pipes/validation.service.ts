@@ -2,22 +2,22 @@ import { Injectable } from "@nestjs/common";
 import validator from "validator";
 import { ValidationErrorCodes } from "../exceptions/errorCodes/ValidationErrorCodes";
 import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
-import { AddUpdateOptionalData } from "./interfaces/add-update-optional-data.interface";
-import { UserLoginEmail, UserLoginPhoneNumber, UserLoginUsername } from "./interfaces/user-log-in.interface";
-import { EmailSubscription } from "./interfaces/email-subscription.interface";
+import { UserLoginEmailError, UserLoginPhoneNumberError, UserLoginUsernameError } from "./interfaces/user-log-in.interface";
+import { AddUpdateOptionalDataError } from "./interfaces/add-update-optional-data.interface";
+import { EmailSubscriptionError } from "./interfaces/email-subscription.interface";
 import { InternalFailure } from "./interfaces/internal-failure.interface";
-import { PasswordChange } from "./interfaces/password-change.interface";
-import { EmailChange } from "./interfaces/email-change.interface";
-import { ContactForm } from "./interfaces/contact-form.interface";
-import { PhoneChange } from "./interfaces/phone-change.interface";
-import { UserSignUp } from "./interfaces/user-sign-up.interface";
-import { Subjects } from "./enums/contact-subjects.enum";
+import { PasswordChangeError } from "./interfaces/password-change.interface";
+import { EmailChangeError } from "./interfaces/email-change.interface";
+import { ContactFormError } from "./interfaces/contact-form-error.interface";
+import { PhoneChangeError } from "./interfaces/phone-change.interface";
+import { UserSignUpError } from "./interfaces/user-sign-up.interface";
+import { Subjects } from "./enums/contact-subjects";
 import { RulesEnum } from "./enums/rules.enum";
 
 @Injectable()
 export class ValidationService {
   async validateRegistration(data) {
-    let errors: Partial<UserSignUp & InternalFailure> = {};
+    let errors: Partial<UserSignUpError & InternalFailure> = {};
 
     try {
       if (await this._isEmpty(data.email)) {
@@ -85,7 +85,7 @@ export class ValidationService {
   }
 
   async validateLogin(data) {
-    let errors: Partial<(UserLoginEmail & UserLoginUsername & UserLoginPhoneNumber) & InternalFailure> = {};
+    let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
 
     try {
       if (data.hasOwnProperty("email")) {
@@ -118,37 +118,34 @@ export class ValidationService {
   }
 
   async validateContactForm(data) {
-    let errors: Partial<ContactForm & InternalFailure> = {};
+    let errors: Partial<ContactFormError & InternalFailure> = {};
 
     try {
-      if (await this._isEmpty(data.firstName)) {
-        errors.firstName = GlobalErrorCodes.EMPTY_ERROR.value;
-      } else if (!(await this._isNameOrSurname(data.firstName))) {
-        errors.firstName = ValidationErrorCodes.INVALID_CREATE_FIRST_NAME.value;
+      if (await this._isEmpty(data.clientFullName)) {
+        errors.clientFullName = GlobalErrorCodes.EMPTY_ERROR.value;
       }
 
-      if (await this._isEmpty(data.lastName)) {
-        errors.lastName = GlobalErrorCodes.EMPTY_ERROR.value;
-      } else if (!(await this._isNameOrSurname(data.lastName))) {
-        errors.lastName = ValidationErrorCodes.INVALID_CREATE_LAST_NAME.value;
-      }
-
-      if (await this._isEmpty(data.email)) {
-        errors.email = GlobalErrorCodes.EMPTY_ERROR.value;
-      } else if (!validator.isEmail(data.email)) {
-        errors.email = ValidationErrorCodes.INVALID_CREATE_EMAIL.value;
-      } else if (!(await this._validateEmailLength(data.email))) {
-        errors.email = ValidationErrorCodes.INVALID_CREATE_EMAIL_LENGTH.value;
+      if (await this._isEmpty(data.clientEmail)) {
+        errors.clientEmail = GlobalErrorCodes.EMPTY_ERROR.value;
+      } else if (!validator.isEmail(data.clientEmail)) {
+        errors.clientEmail = ValidationErrorCodes.INVALID_CREATE_EMAIL.value;
+      } else if (!(await this._validateEmailLength(data.clientEmail))) {
+        errors.clientEmail = ValidationErrorCodes.INVALID_CREATE_EMAIL_LENGTH.value;
       }
 
       if (await this._isEmpty(data.subject)) {
         errors.subject = GlobalErrorCodes.EMPTY_ERROR.value;
-      } else if (!(data.subject in Subjects)) {
+      } else if (!Subjects.includes(data.subject)) {
+        console.log(data.subject, Subjects, !Subjects.includes(data.subject));
         errors.subject = ValidationErrorCodes.INVALID_SUBJECT.value;
       }
 
       if (await this._isEmpty(data.message)) {
         errors.message = GlobalErrorCodes.EMPTY_ERROR.value;
+      }
+
+      if (await this._isEmpty(data.createdAt)) {
+        errors.createdAt = GlobalErrorCodes.EMPTY_ERROR.value;
       }
     } catch (err) {
       errors.internalFailure = err;
@@ -163,7 +160,7 @@ export class ValidationService {
   }
 
   async validateEmailChange(data) {
-    let errors: Partial<EmailChange & InternalFailure> = {};
+    let errors: Partial<EmailChangeError & InternalFailure> = {};
 
     try {
       if (await this._isEmpty(data.oldEmail)) {
@@ -190,7 +187,7 @@ export class ValidationService {
   }
 
   async validatePhoneNumberChange(data) {
-    let errors: Partial<PhoneChange & InternalFailure> = {};
+    let errors: Partial<PhoneChangeError & InternalFailure> = {};
 
     try {
       if (await this._isEmpty(data.oldPhoneNumber)) {
@@ -222,7 +219,7 @@ export class ValidationService {
   }
 
   async validatePasswordChange(data) {
-    let errors: Partial<PasswordChange & InternalFailure> = {};
+    let errors: Partial<PasswordChangeError & InternalFailure> = {};
 
     try {
       if (await this._isEmpty(data.oldPassword)) {
@@ -256,7 +253,7 @@ export class ValidationService {
   }
 
   async validateOptionalDataChange(data) {
-    let errors: Partial<AddUpdateOptionalData & InternalFailure> = {};
+    let errors: Partial<AddUpdateOptionalDataError & InternalFailure> = {};
 
     try {
       if (data.hasOwnProperty("firstName")) {
@@ -292,7 +289,7 @@ export class ValidationService {
   }
 
   async validateEmail(email) {
-    let errors: Partial<EmailSubscription & InternalFailure> = {};
+    let errors: Partial<EmailSubscriptionError & InternalFailure> = {};
 
     try {
       if (await this._isEmpty(email)) {

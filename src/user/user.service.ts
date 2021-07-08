@@ -5,31 +5,30 @@ import { Model } from "mongoose";
 import crypto from "crypto";
 import argon2 from "argon2";
 import { v4 } from "uuid";
-import { SignUpDto } from "./dto/sign-up.dto";
-import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
-import { VerifyUuidDto } from "./dto/verify-uuid.dto";
-import { ForgotPassword } from "./interfaces/forgot-password.interface";
-import { UserChangeEmailDto } from "./dto/update-email.dto";
-import { RequestBodyException } from "../exceptions/RequestBody.exception";
-import { AuthService } from "../auth/services/auth.service";
-import { ForgotPasswordDto } from "./dto/forgot-password.dto";
-import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
+import { UserLoginEmailError, UserLoginPhoneNumberError, UserLoginUsernameError } from "../pipes/interfaces/user-log-in.interface";
 import { ValidationErrorCodes } from "../exceptions/errorCodes/ValidationErrorCodes";
-import { UserChangePasswordDto } from "./dto/update-password.dto";
-import { InternalException } from "../exceptions/Internal.exception";
-import { AddOrUpdateOptionalDataDto } from "./dto/add-or-update-optional-data.dto";
-import { UserDocument } from "./schemas/user.schema";
-import { ValidationException } from "../exceptions/Validation.exception";
-import { UserSignUp } from "../pipes/interfaces/user-sign-up.interface";
-import { UserLoginEmail, UserLoginPhoneNumber, UserLoginUsername } from "../pipes/interfaces/user-log-in.interface";
-import { EmailChange } from "../pipes/interfaces/email-change.interface";
-import { PasswordChange } from "../pipes/interfaces/password-change.interface";
-import { AddUpdateOptionalData } from "../pipes/interfaces/add-update-optional-data.interface";
 import { InternalFailure } from "../pipes/interfaces/internal-failure.interface";
+import { PasswordChangeError } from "../pipes/interfaces/password-change.interface";
+import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
+import { RequestBodyException } from "../exceptions/RequestBody.exception";
+import { ValidationException } from "../exceptions/Validation.exception";
+import { EmailChangeError } from "../pipes/interfaces/email-change.interface";
 import { UserErrorCodes } from "../exceptions/errorCodes/UserErrorCodes";
+import { PhoneChangeError } from "../pipes/interfaces/phone-change.interface";
+import { UserSignUpError } from "../pipes/interfaces/user-sign-up.interface";
+import { InternalException } from "../exceptions/Internal.exception";
+import { AuthService } from "../auth/services/auth.service";
+import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
+import { AddOrUpdateOptionalDataDto } from "./dto/add-or-update-optional-data.dto";
+import { ForgotPasswordDocument } from "./schemas/forgot-password.schema";
+import { UserChangePasswordDto } from "./dto/update-password.dto";
 import { UserChangePhoneNumberDto } from "./dto/update-phone.dto";
-import { PhoneChange } from "../pipes/interfaces/phone-change.interface";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { UserChangeEmailDto } from "./dto/update-email.dto";
 import { VaultDocument } from "./schemas/vault.schema";
+import { VerifyUuidDto } from "./dto/verify-uuid.dto";
+import { UserDocument } from "./schemas/user.schema";
+import { SignUpDto } from "./dto/sign-up.dto";
 
 const ms = require("ms");
 
@@ -41,7 +40,7 @@ export class UserService {
     @InjectModel("Vault")
     private readonly vaultModel: Model<VaultDocument>,
     @InjectModel("Forgot-Password")
-    private readonly forgotPasswordModel: Model<ForgotPassword>,
+    private readonly forgotPasswordModel: Model<ForgotPasswordDocument>,
     private readonly authService: AuthService
   ) {}
 
@@ -51,8 +50,8 @@ export class UserService {
   private LOGIN_ATTEMPTS_TO_BLOCK = 5;
   private counter = 0;
 
-  async register(req: Request, userSignUpDto: SignUpDto): Promise<HttpStatus | ValidationException> {
-    const errors: Partial<UserSignUp> = {};
+  async register(userSignUpDto: SignUpDto): Promise<HttpStatus | ValidationException> {
+    const errors: Partial<UserSignUpError> = {};
 
     try {
       if (await this._isExistingEmail(userSignUpDto.email)) {
@@ -125,7 +124,7 @@ export class UserService {
   }
 
   async login(req: Request, res: Response, loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto) {
-    let errors: Partial<(UserLoginEmail & UserLoginUsername & UserLoginPhoneNumber) & InternalFailure> = {};
+    let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
     try {
@@ -249,7 +248,7 @@ export class UserService {
   }
 
   async changeEmail(req: Request, changeEmailDto: UserChangeEmailDto) {
-    const errors: Partial<EmailChange> = {};
+    const errors: Partial<EmailChangeError> = {};
 
     try {
       const emailMatches = await this._isExistingEmail(changeEmailDto.oldEmail);
@@ -282,7 +281,7 @@ export class UserService {
   }
 
   async changePhoneNumber(req: Request, changePhoneNumberDto: UserChangePhoneNumberDto) {
-    const errors: Partial<PhoneChange> = {};
+    const errors: Partial<PhoneChangeError> = {};
 
     try {
       const phoneMatches = await this._isExistingPhone(changePhoneNumberDto.oldPhoneNumber);
@@ -319,7 +318,7 @@ export class UserService {
 
   async changePassword(req: Request, userChangePasswordDto: UserChangePasswordDto) {
     const userId = req.user.userId;
-    const errors: Partial<PasswordChange> = {};
+    const errors: Partial<PasswordChangeError> = {};
 
     try {
       const user = await this.userModel.findOne({ id: userId, isActive: true });
