@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 
+require('dotenv').config();
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(helmet());
@@ -14,7 +16,7 @@ async function bootstrap() {
       methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS']
     }
   );
-
+  
   const config = new DocumentBuilder()
     .setTitle('Authentication and user microservice')
     .setDescription('The cats API description')
@@ -23,8 +25,8 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-
-  await app.listen(3000);
+  
+  await app.listen(6000);
 }
 
 bootstrap();

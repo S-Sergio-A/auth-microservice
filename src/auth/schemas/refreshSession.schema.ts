@@ -1,39 +1,30 @@
-import { Schema } from 'mongoose';
+import { Schema, SchemaFactory, Prop } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
-export const RefreshSessionSchema = new Schema(
-  {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    refreshToken: {
-      type: String,
-      required: true
-    },
-    ip: {
-      type: String,
-      required: true
-    },
-    userAgent: {
-      type: String,
-      required: true
-    },
-    expiresIn: {
-      type: Number,
-      required: true
-    },
-    createdAt: {
-      type: Number,
-      required: true
-    },
-    fingerprint: {
-      type: String,
-      required: true
-    }
-  },
-  {
-    versionKey: false,
-    timestamps: true
-  }
-);
+export type RefreshSessionDocument = RefreshSession & Document;
+
+@Schema()
+class RefreshSession {
+  @Prop({ required: true, index: false, ref: "User" })
+  userId: string;
+
+  @Prop({ required: true, index: true })
+  refreshToken: string;
+
+  @Prop({ required: true, index: false })
+  ip: string;
+
+  @Prop({ required: true, index: true })
+  userAgent: string;
+
+  @Prop({ required: true, index: true })
+  fingerprint: string;
+
+  @Prop({ required: true, index: false })
+  expiresIn: number;
+
+  @Prop({ required: true, index: false })
+  createdAt: number;
+}
+
+export const RefreshSessionSchema = SchemaFactory.createForClass(RefreshSession);

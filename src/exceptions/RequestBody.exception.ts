@@ -1,5 +1,5 @@
 export class RequestBodyException extends Error {
-  public response: { key: string; code: number; message: string };
+  public response: { readonly key: string; readonly code: number; readonly message: string };
 
   constructor(public readonly error: { readonly key: string; readonly code: number; readonly message: string }, ...args) {
     super(...args);

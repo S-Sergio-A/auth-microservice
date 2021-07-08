@@ -1,9 +1,9 @@
 import { PipeTransform, ArgumentMetadata, BadRequestException, Injectable } from "@nestjs/common";
-import { ValidationService } from "../validation.service";
 import { ValidationException } from "../../exceptions/Validation.exception";
+import { ValidationService } from "../validation.service";
 
 @Injectable()
-export class LoginValidationPipe implements PipeTransform {
+export class ChangePhoneNumberValidationPipe implements PipeTransform {
   async transform(value, metadata: ArgumentMetadata) {
     if (!value) {
       throw new BadRequestException("No data submitted");
@@ -13,7 +13,7 @@ export class LoginValidationPipe implements PipeTransform {
       return value;
     }
 
-    const { errors, isValid } = await ValidationService.prototype.validateLogin(value);
+    const { errors, isValid } = await ValidationService.prototype.validatePhoneNumberChange(value);
 
     if (isValid) {
       return value;

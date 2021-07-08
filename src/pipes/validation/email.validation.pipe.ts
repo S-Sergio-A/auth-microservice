@@ -1,19 +1,17 @@
-import { PipeTransform, ArgumentMetadata, BadRequestException, Injectable } from '@nestjs/common';
-import { ValidationService } from './validation.service';
-import { ValidationException } from '../../exceptions/Validation.exception';
+import { PipeTransform, ArgumentMetadata, BadRequestException, Injectable } from "@nestjs/common";
+import { ValidationService } from "../validation.service";
+import { ValidationException } from "../../exceptions/Validation.exception";
 
 @Injectable()
 export class EmailValidationPipe implements PipeTransform {
-  constructor(
-    private readonly validation: ValidationService,
-  ) {}
-  
+  constructor(private readonly validation: ValidationService) {}
+
   async transform(value, metadata: ArgumentMetadata) {
     if (!value) {
-      throw new BadRequestException('No data submitted');
+      throw new BadRequestException("No data submitted");
     }
 
-    if (!metadata.metatype || !this._toValidate(metadata.metatype)) {
+    if (!metadata.metatype) {
       return value;
     }
 
@@ -24,9 +22,5 @@ export class EmailValidationPipe implements PipeTransform {
     } else {
       throw new ValidationException(errors);
     }
-  }
-
-  private _toValidate(metatype): boolean {
-    return typeof metatype === 'object';
   }
 }

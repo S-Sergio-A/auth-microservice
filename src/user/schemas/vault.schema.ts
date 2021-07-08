@@ -1,18 +1,15 @@
-import { Schema } from 'mongoose';
+import { Schema, SchemaFactory, Prop } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
-export const VaultSchema = new Schema(
-  {
-    userId: {
-      type: String,
-      required: true
-    },
-    salt: {
-      type: String,
-      required: true
-    }
-  },
-  {
-    versionKey: false,
-    timestamps: true
-  }
-);
+export type VaultDocument = Vault & Document;
+
+@Schema()
+class Vault {
+  @Prop({ required: true, index: true, ref: "User" })
+  userId: string;
+
+  @Prop({ required: true, index: true })
+  salt: string;
+}
+
+export const VaultSchema = SchemaFactory.createForClass(Vault);

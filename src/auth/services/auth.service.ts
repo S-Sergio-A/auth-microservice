@@ -1,29 +1,27 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Request } from 'express';
-import { Model } from 'mongoose';
-import { config } from 'dotenv';
-import { GlobalErrorCodes } from '../../exceptions/errorCodes/GlobalErrorCodes';
-import { RequestBodyException } from '../../exceptions/RequestBody.exception';
-import { TokenErrorCodes } from '../../exceptions/errorCodes/TokenErrorCodes';
-import { RefreshSession } from '../interfaces/refresh-session.interface';
-import { InternalException } from '../../exceptions/Internal.exception';
-import { RefreshSessionDto } from '../dto/refresh-session.dto';
-import { ClientJWTData, JWTTokens } from './interfaces/jwt-token.interface';
-import { SessionData } from './interfaces/session-data.interface';
+import { HttpStatus, Injectable, UseFilters } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Request } from "express";
+import { Model } from "mongoose";
+import { GlobalErrorCodes } from "../../exceptions/errorCodes/GlobalErrorCodes";
+import { RequestBodyException } from "../../exceptions/RequestBody.exception";
+import { TokenErrorCodes } from "../../exceptions/errorCodes/TokenErrorCodes";
+import { InternalException } from "../../exceptions/Internal.exception";
+import { RefreshSessionDto } from "../dto/refresh-session.dto";
+import { ClientJWTData, JWTTokens } from "./interfaces/jwt-token.interface";
+import { SessionData } from "./interfaces/session-data.interface";
+import { RefreshSessionDocument } from "../schemas/refreshSession.schema";
+import { RequestBodyExceptionFilter } from "../../exceptions/filters/RequestBody.exception-filter";
 
-const jwt = require('jsonwebtoken');
-const ms = require('ms');
-
-config({ path: './../../.env' });
+const jwt = require("jsonwebtoken");
+const ms = require("ms");
 
 const MAX_REFRESH_SESSIONS_COUNT = 5;
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel('RefreshSession')
-    private readonly refreshSessionModel: Model<RefreshSession>
+    @InjectModel("Refresh-Session")
+    private readonly refreshSessionModel: Model<RefreshSessionDocument>
   ) {}
 
   async generateJWT(userId: string, sessionData: SessionData): Promise<JWTTokens> {
@@ -37,83 +35,77 @@ export class AuthService {
         userAgent,
         fingerprint,
         createdAt: Date.now(),
-        expiresIn: ms('30d')
+        expiresIn: ms(process.env.JWT_REFRESH_EXPIRATION_TIME)
       })
-      // process.env.JWT_REFRESH_EXPIRATION_TIME
     };
   }
 
-  async refreshSession(req: Request): Promise<JWTTokens> {
+  async refreshSession(req: Request, sessionData: SessionData): Promise<JWTTokens> {
+    const { userAgent, ip, fingerprint } = sessionData;
+
     let token: string;
     let refreshToken: string;
     const user = req.user;
-    const fingerprint = req.headers['fingerprint'].toString();
 
-    if (typeof req.headers['access-token'] === 'string') {
-      token = req.headers['access-token'].split('"').join('') || req.cookies.token;
-    } else if (Array.isArray(req.headers['access-token'])) {
+    if (typeof req.headers["access-token"] === "string") {
+      token = req.headers["access-token"].split('"').join("") || req.cookies.token;
+    } else if (Array.isArray(req.headers["access-token"])) {
       throw new RequestBodyException({
-        key: 'USER_TOKEN_NOT_PROVIDED',
+        key: "USER_TOKEN_NOT_PROVIDED",
         code: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.code,
         message: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.value
       });
     }
 
-    if (typeof req.headers['refresh-token'] === 'string') {
-      refreshToken = req.headers['refresh-token'].split('"').join('') || req.cookies.refreshToken;
-    } else if (Array.isArray(req.headers['access-token'])) {
+    if (typeof req.headers["refresh-token"] === "string") {
+      refreshToken = req.headers["refresh-token"].split('"').join("") || req.cookies.refreshToken;
+    } else if (Array.isArray(req.headers["access-token"])) {
       throw new RequestBodyException({
-        key: 'REFRESH_TOKEN_NOT_PROVIDED',
+        key: "REFRESH_TOKEN_NOT_PROVIDED",
         code: TokenErrorCodes.REFRESH_TOKEN_NOT_PROVIDED.code,
         message: TokenErrorCodes.REFRESH_TOKEN_NOT_PROVIDED.value
       });
     }
 
-    if (token && refreshToken) {
-      try {
-        const rows = await this._getRefreshSession(user);
-        if (await this._verifySessionRefreshRequest(rows, fingerprint)) {
-          const sessionData = {
-            ip: req.socket.remoteAddress,
-            userAgent: req.headers['user-agent'],
-            fingerprint: fingerprint,
-            createdAt: Date.now(),
-            expiresIn: Date.now() + ms(process.env.JWT_REFRESH_EXPIRATION_TIME)
-          };
+    const rows = await this.refreshSessionModel.findOne({
+      userId: user.userId
+    });
 
-          return this.generateJWT(user.userId, sessionData);
-        } else {
-          throw new RequestBodyException({
-            key: 'SESSION_EXPIRED',
-            code: TokenErrorCodes.SESSION_EXPIRED.code,
-            message: TokenErrorCodes.SESSION_EXPIRED.value
-          });
-        }
-      } catch (e) {
-        console.log(e.stack);
-        throw new RequestBodyException({
-          key: 'REFRESH_TOKEN_EXPIRED',
-          code: TokenErrorCodes.REFRESH_TOKEN_EXPIRED.code,
-          message: TokenErrorCodes.REFRESH_TOKEN_EXPIRED.value
-        });
-      }
-    } else {
+    if (Date.now() > rows.createdAt + rows.expiresIn) {
       throw new RequestBodyException({
-        key: 'USER_TOKEN_NOT_PROVIDED',
-        code: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.code,
-        message: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.value
+        key: "SESSION_EXPIRED",
+        code: TokenErrorCodes.SESSION_EXPIRED.code,
+        message: TokenErrorCodes.SESSION_EXPIRED.value
       });
     }
+
+    if (rows.fingerprint !== rows) {
+      throw new RequestBodyException({
+        key: "INVALID_REFRESH_SESSION",
+        code: TokenErrorCodes.INVALID_REFRESH_SESSION.code,
+        message: TokenErrorCodes.INVALID_REFRESH_SESSION.value
+      });
+    }
+
+    const newSessionData = {
+      ip,
+      userAgent,
+      fingerprint,
+      createdAt: Date.now(),
+      expiresIn: Date.now() + ms(process.env.JWT_REFRESH_EXPIRATION_TIME)
+    };
+
+    return await this.generateJWT(user.userId, newSessionData);
   }
 
   async verifyToken(req: Request) {
     let token: string;
 
-    if (typeof req.headers['access-token'] === 'string') {
-      token = req.headers['access-token'].split('"').join('') || req.cookies.token;
-    } else if (Array.isArray(req.headers['access-token'])) {
+    if (typeof req.headers["access-token"] === "string") {
+      token = req.headers["access-token"].split('"').join("") || req.cookies.token;
+    } else if (Array.isArray(req.headers["access-token"])) {
       throw new RequestBodyException({
-        key: 'USER_TOKEN_NOT_PROVIDED',
+        key: "USER_TOKEN_NOT_PROVIDED",
         code: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.code,
         message: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.value
       });
@@ -128,7 +120,7 @@ export class AuthService {
       } catch (e) {
         console.log(e.stack);
         throw new RequestBodyException({
-          key: 'SESSION_EXPIRED',
+          key: "SESSION_EXPIRED",
           code: TokenErrorCodes.SESSION_EXPIRED.code,
           message: TokenErrorCodes.SESSION_EXPIRED.value
         });
@@ -150,7 +142,7 @@ export class AuthService {
     } catch (e) {
       console.log(e.stack);
       throw new InternalException({
-        key: 'INTERNAL_ERROR',
+        key: "INTERNAL_ERROR",
         code: GlobalErrorCodes.INTERNAL_ERROR.code,
         message: GlobalErrorCodes.INTERNAL_ERROR.value
       });
@@ -171,7 +163,7 @@ export class AuthService {
   private async _isValidSessionsCount(userId: string) {
     try {
       const sessionsCount = await this.refreshSessionModel
-        .count({
+        .countDocuments({
           userId: userId
         })
         .exec();
@@ -179,7 +171,7 @@ export class AuthService {
     } catch (e) {
       console.log(e.stack);
       throw new InternalException({
-        key: 'INTERNAL_ERROR',
+        key: "INTERNAL_ERROR",
         code: GlobalErrorCodes.INTERNAL_ERROR.code,
         message: GlobalErrorCodes.INTERNAL_ERROR.value
       });
@@ -191,13 +183,14 @@ export class AuthService {
     const refreshToken = await this._generateRefreshToken(refreshSessionDto.userId);
 
     try {
+      refreshSessionDto.refreshToken = refreshToken;
       const createdRefreshSession = new this.refreshSessionModel(refreshSessionDto);
       await createdRefreshSession.save();
       return refreshToken;
     } catch (e) {
       console.log(e.stack);
       throw new InternalException({
-        key: 'INTERNAL_ERROR',
+        key: "INTERNAL_ERROR",
         code: GlobalErrorCodes.INTERNAL_ERROR.code,
         message: GlobalErrorCodes.INTERNAL_ERROR.value
       });
@@ -216,85 +209,46 @@ export class AuthService {
     } catch (e) {
       console.log(e.stack);
       throw new InternalException({
-        key: 'INTERNAL_ERROR',
+        key: "INTERNAL_ERROR",
         code: GlobalErrorCodes.INTERNAL_ERROR.code,
         message: GlobalErrorCodes.INTERNAL_ERROR.value
       });
     }
   }
 
-  // проверка подлинности запроса на обновление сессии
-  // (сравнивает текущий fingerprint/ip с тем, который записан в БД)
-  private async _verifySessionRefreshRequest(oldSessionData: SessionData, newFingerprint: string) {
-    const currentTime = Date.now();
-    if (currentTime > oldSessionData.createdAt + oldSessionData.expiresIn) {
-      throw new RequestBodyException({
-        key: 'SESSION_EXPIRED',
-        code: TokenErrorCodes.SESSION_EXPIRED.code,
-        message: TokenErrorCodes.SESSION_EXPIRED.value
-      });
-    }
-    // if (oldRefreshSessionData.ip !== newFingerprint) return new Error(errorCode.INVALID_REFRESH_SESSION.toString());
-    if (oldSessionData.fingerprint !== newFingerprint) {
-      throw new RequestBodyException({
-        key: 'REFRESH_TOKEN_EXPIRED',
-        code: TokenErrorCodes.REFRESH_TOKEN_EXPIRED.code,
-        message: TokenErrorCodes.REFRESH_TOKEN_EXPIRED.value
-      });
-    }
-    return true;
-  }
-
   private async _generateAccessToken(userId) {
-    return jwt.sign({ userId }, 'process.env.JWT_SECRET', {
-      algorithm: 'HS512',
+    return jwt.sign({ userId }, process.env.JWT_SECRET, {
+      algorithm: "HS512",
       subject: userId.toString(),
-      expiresIn: '15m'
+      expiresIn: "15m"
     });
   }
 
   private async _generateRefreshToken(userId) {
     return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
-      algorithm: 'HS512',
+      algorithm: "HS512",
       subject: userId.toString(),
-      expiresIn: '60d'
+      expiresIn: "60d"
     });
-  }
-
-  private async _getRefreshSession(userId) {
-    try {
-      const refreshSession = await this.refreshSessionModel.findOne({
-        userId: userId
-      });
-
-      return refreshSession;
-    } catch (e) {
-      console.log(e.stack);
-      throw new InternalException({
-        key: 'INTERNAL_ERROR',
-        code: GlobalErrorCodes.INTERNAL_ERROR.code,
-        message: GlobalErrorCodes.INTERNAL_ERROR.value
-      });
-    }
   }
 
   /////////////----CLIENT----\\\\\\\\\\\\\
   private async _generateClientsAccessToken(clientId, ip) {
     return jwt.sign({ clientId, ip }, process.env.CLIENTS_JWT_SECRET, {
-      algorithm: 'HS512',
+      algorithm: "HS512",
       subject: clientId.toString(),
-      expiresIn: '60d'
+      expiresIn: "60d"
     });
   }
 
   async verifyClientsToken(req: Request) {
     let token: string;
 
-    if (typeof req.headers['client-token'] === 'string') {
-      token = req.headers['client-token'].split('"').join('') || req.cookies.clientsToken;
-    } else if (Array.isArray(req.headers['access-token'])) {
+    if (typeof req.headers["client-token"] === "string") {
+      token = req.headers["client-token"].split('"').join("") || req.cookies.clientsToken;
+    } else if (Array.isArray(req.headers["access-token"])) {
       throw new RequestBodyException({
-        key: 'CLIENT_TOKEN_NOT_PROVIDED',
+        key: "CLIENT_TOKEN_NOT_PROVIDED",
         code: TokenErrorCodes.CLIENT_TOKEN_NOT_PROVIDED.code,
         message: TokenErrorCodes.CLIENT_TOKEN_NOT_PROVIDED.value
       });
@@ -310,7 +264,7 @@ export class AuthService {
       } catch (e) {
         console.log(e.stack);
         throw new InternalException({
-          key: 'INTERNAL_ERROR',
+          key: "INTERNAL_ERROR",
           code: GlobalErrorCodes.INTERNAL_ERROR.code,
           message: GlobalErrorCodes.INTERNAL_ERROR.value
         });

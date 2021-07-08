@@ -1,11 +1,11 @@
-import { IsDefined, IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsDate, IsDefined, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsPhoneNumber, IsString, Length } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 
 export class SignUpDto {
   @ApiProperty({
-    example: '3dbdf9a931689e5f727c55694718afa8',
-    description: 'The ID of the User.',
-    format: 'string',
+    example: "3dbdf9a931689e5f727c55694718afa8",
+    description: "The ID of the User.",
+    format: "string",
     minLength: 32,
     maxLength: 32
   })
@@ -13,12 +13,12 @@ export class SignUpDto {
   @IsNotEmpty()
   @IsString()
   @Length(32, 32)
-  userId: string;
+  id: string;
 
   @ApiProperty({
-    example: 'petroshrekovenko@gmail.com',
-    description: 'The email of the User.',
-    format: 'email',
+    example: "petroshrekovenko@gmail.com",
+    description: "The email of the User.",
+    format: "email",
     uniqueItems: true,
     minLength: 6,
     maxLength: 254
@@ -30,9 +30,9 @@ export class SignUpDto {
   readonly email: string;
 
   @ApiProperty({
-    example: 'PetroShrekovenko.',
-    description: 'The username of the User.',
-    format: 'string',
+    example: "PetroShrekovenko.",
+    description: "The username of the User.",
+    format: "string",
     minLength: 4,
     maxLength: 30
   })
@@ -43,28 +43,41 @@ export class SignUpDto {
   readonly username: string;
 
   @ApiProperty({
-    example: 'Secret password.',
-    description: 'The password of the User.',
-    format: 'string',
+    example: "Secret password.",
+    description: "The password of the User.",
+    format: "string",
     minLength: 8,
-    maxLength: 50
+    maxLength: 200
   })
   @IsDefined()
   @IsNotEmpty()
   @IsString()
-  @Length(8, 50)
+  @Length(8, 200)
   password: string;
 
   @ApiProperty({
-    example: 'Secret password.',
-    description: 'The password verification of the User.',
-    format: 'string',
+    example: "Secret password.",
+    description: "The password verification of the User.",
+    format: "string",
     minLength: 8,
-    maxLength: 50
+    maxLength: 200
   })
   @IsDefined()
   @IsNotEmpty()
   @IsString()
-  @Length(8, 50)
+  @Length(8, 200)
   passwordVerification: string;
+
+  @ApiProperty({
+    example: "+380501224456",
+    description: "The mobile phone number of the User.",
+    format: "string",
+    minLength: 12,
+    maxLength: 20
+  })
+  @IsDefined()
+  @IsNotEmpty()
+  @IsPhoneNumber()
+  @IsOptional()
+  phoneNumber: string;
 }

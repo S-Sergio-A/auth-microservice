@@ -4,7 +4,8 @@ import { AuthService } from './services/auth.service';
 import { RefreshSessionSchema } from './schemas/refreshSession.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: 'RefreshSession', schema: RefreshSessionSchema }])],
-  providers: [AuthService]
+  imports: [MongooseModule.forFeature([{ name: 'Refresh-Session', schema: RefreshSessionSchema }])],
+  providers: [AuthService],
+  exports: [AuthService]
 })
 export class AuthModule {}

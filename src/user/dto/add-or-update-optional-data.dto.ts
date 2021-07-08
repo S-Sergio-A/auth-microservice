@@ -1,11 +1,11 @@
-import { IsDate, IsDefined, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsDate, IsDefined, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 
 export class AddOrUpdateOptionalDataDto {
   @ApiProperty({
-    example: 'Petro',
-    description: 'The first name of the User.',
-    format: 'string',
+    example: "Petro",
+    description: "The first name of the User.",
+    format: "string",
     minLength: 1,
     maxLength: 50
   })
@@ -16,9 +16,9 @@ export class AddOrUpdateOptionalDataDto {
   firstName: string;
 
   @ApiProperty({
-    example: 'Shrekovenko',
-    description: 'The last name of the User.',
-    format: 'string',
+    example: "Shrekovenko",
+    description: "The last name of the User.",
+    format: "string",
     minLength: 1,
     maxLength: 50
   })
@@ -29,9 +29,9 @@ export class AddOrUpdateOptionalDataDto {
   lastName: string;
 
   @ApiProperty({
-    example: '02.10.2002',
-    description: 'The birthday of the User.',
-    format: 'date',
+    example: "02.10.2002",
+    description: "The birthday of the User.",
+    format: "date",
     minLength: 10,
     maxLength: 10
   })
@@ -40,17 +40,4 @@ export class AddOrUpdateOptionalDataDto {
   @IsDate()
   @IsOptional()
   birthday: string;
-
-  @ApiProperty({
-    example: '+380501224456, or +380 (050) 122-44-56.',
-    description: 'The mobile phone number of the User.',
-    format: 'string',
-    minLength: 12,
-    maxLength: 20
-  })
-  @IsDefined()
-  @IsNotEmpty()
-  @IsPhoneNumber('UA' || 'RU' || 'US')
-  @IsOptional()
-  phoneNumber: string;
 }
