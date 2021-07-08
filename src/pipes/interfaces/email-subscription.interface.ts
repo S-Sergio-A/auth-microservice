@@ -1,3 +1,3 @@
-export interface EmailSubscription {
+export interface EmailSubscriptionError {
   email: string;
 }

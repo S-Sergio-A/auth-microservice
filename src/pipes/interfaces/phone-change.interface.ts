@@ -1,4 +1,4 @@
-export interface PhoneChange {
+export interface PhoneChangeError {
   oldPhoneNumber: string;
   newPhoneNumber: string;
 }

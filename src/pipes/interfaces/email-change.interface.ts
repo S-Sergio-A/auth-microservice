@@ -1,4 +1,4 @@
-export interface EmailChange {
+export interface EmailChangeError {
   oldEmail: string;
   newEmail: string;
 }

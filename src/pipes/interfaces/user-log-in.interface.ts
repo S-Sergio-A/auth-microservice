@@ -1,14 +1,14 @@
-export interface UserLoginEmail {
+export interface UserLoginEmailError {
   email: string;
   password: string;
 }
 
-export interface UserLoginUsername {
+export interface UserLoginUsernameError {
   username: string;
   password: string;
 }
 
-export interface UserLoginPhoneNumber {
+export interface UserLoginPhoneNumberError {
   phoneNumber: string;
   password: string;
 }

@@ -1,4 +1,4 @@
-export interface UserSignUp {
+export interface UserSignUpError {
   email: string;
   phoneNumber: string;
   username: string;
