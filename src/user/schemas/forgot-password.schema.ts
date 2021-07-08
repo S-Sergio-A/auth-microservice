@@ -1,36 +1,27 @@
-import { Schema } from 'mongoose';
-import validator from 'validator';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
-export const ForgotPasswordSchema = new Schema(
-  {
-    email: {
-      type: String,
-      required: true
-    },
-    verification: {
-      type: String,
-      validate: validator.isUUID,
-      required: true
-    },
-    expires: {
-      type: Number,
-      required: true
-    },
-    ipOfRequest: {
-      type: String,
-      required: true
-    },
-    browserOfRequest: {
-      type: String,
-      required: true
-    },
-    countryOfRequest: {
-      type: String,
-      required: true
-    }
-  },
-  {
-    versionKey: false,
-    timestamps: true
-  }
-);
+export type ForgotPasswordDocument = ForgotPassword & Document;
+
+@Schema()
+class ForgotPassword {
+  @Prop({ required: true, index: true })
+  email: string;
+
+  @Prop({ required: true, index: true })
+  verification: string;
+
+  @Prop({ required: true, index: false })
+  expires: number;
+
+  @Prop({ required: true, index: false })
+  ipOfRequest: string;
+
+  @Prop({ required: true, index: false })
+  browserOfRequest: string;
+
+  @Prop({ required: true, index: false })
+  countryOfRequest: string;
+}
+
+export const ForgotPasswordSchema = SchemaFactory.createForClass(ForgotPassword);
