@@ -1,15 +1,8 @@
-import { Controller, Post, Body, Put, UseFilters, HttpCode, HttpStatus, Req, Get, Res } from "@nestjs/common";
-import { ApiCreatedResponse, ApiOkResponse, ApiTags, ApiOperation } from "@nestjs/swagger";
-import { Request, Response } from "express";
-import { ChangePhoneNumberValidationPipe } from "../pipes/validation/changePhoneNumber.validation.pipe";
-import { ChangePasswordValidationPipe } from "../pipes/validation/changePassword.validation.pipe";
+import { MessagePattern, Payload, Transport } from "@nestjs/microservices";
+import { Controller, UseFilters } from "@nestjs/common";
 import { RequestBodyExceptionFilter } from "../exceptions/filters/RequestBody.exception-filter";
-import { OptionalDataValidationPipe } from "../pipes/validation/optionalData.validation.pipe";
-import { RegistrationValidationPipe } from "../pipes/validation/registration.validation.pipe";
 import { ValidationExceptionFilter } from "../exceptions/filters/Validation.exception-filter";
-import { ChangeEmailValidationPipe } from "../pipes/validation/changeEmail.validation.pipe";
 import { InternalExceptionFilter } from "../exceptions/filters/Internal.exception-filter";
-import { LoginValidationPipe } from "../pipes/validation/login.validation.pipe";
 import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
 import { AddOrUpdateOptionalDataDto } from "./dto/add-or-update-optional-data.dto";
 import { UserChangePhoneNumberDto } from "./dto/update-phone.dto";
@@ -19,91 +12,75 @@ import { UserChangeEmailDto } from "./dto/update-email.dto";
 import { VerifyUuidDto } from "./dto/verify-uuid.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { UserService } from "./user.service";
+import { IpAgentFingerprint, RequestInfo } from "./interfaces/request-info.interface";
 
 @UseFilters(ValidationExceptionFilter)
 @UseFilters(RequestBodyExceptionFilter)
 @UseFilters(InternalExceptionFilter)
 @Controller("user")
-@ApiTags("User")
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post("/sign-up")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Register user." })
-  @ApiCreatedResponse({})
-  async register(@Body(new RegistrationValidationPipe()) createUserDto: SignUpDto) {
+  @MessagePattern({ cmd: "register" }, Transport.REDIS)
+  async register(@Payload() createUserDto: SignUpDto) {
     return await this.userService.register(createUserDto);
   }
 
-  @Post("/login")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Log in the user." })
-  @ApiCreatedResponse({})
+  @MessagePattern({ cmd: "login" }, Transport.REDIS)
   async login(
-    @Req() req: Request,
-    @Res() res: Response,
-    @Body(new LoginValidationPipe()) loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto
+    @Payload()
+    data: IpAgentFingerprint & {
+      loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
+    }
   ) {
-    return await this.userService.login(req, res, loginUserDto);
+    return await this.userService.login(data);
   }
 
-  @Post("/forgot-password")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Request resetting for a forgotten password." })
-  @ApiOkResponse({})
-  async forgotPassword(@Req() req: Request, @Body() forgotPasswordDto: ForgotPasswordDto) {
-    return await this.userService.forgotPassword(req, forgotPasswordDto);
-  }
-
-  @Put("/forgot-password-verify")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Verify a password reset operation and create a new password." })
-  @ApiOkResponse({})
-  async forgotPasswordVerify(@Req() req: Request, @Body() verifyUuidDto: VerifyUuidDto) {
-    return await this.userService.forgotPasswordVerify(req, verifyUuidDto);
-  }
-
-  @Put("/email/:id")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Change an email." })
-  @ApiCreatedResponse({})
-  async changeEmail(@Req() req: Request, @Body(new ChangeEmailValidationPipe()) changeEmailDto: UserChangeEmailDto) {
-    return await this.userService.changeEmail(req, changeEmailDto);
-  }
-
-  @Put("/password/:id")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Change a password." })
-  @ApiCreatedResponse({})
-  async changePassword(@Req() req: Request, @Body(new ChangePasswordValidationPipe()) changePasswordDto: UserChangePasswordDto) {
-    return await this.userService.changePassword(req, changePasswordDto);
-  }
-
-  @Put("/phone/:id")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Change a password." })
-  @ApiCreatedResponse({})
-  async changePhoneNumber(
-    @Req() req: Request,
-    @Body(new ChangePhoneNumberValidationPipe()) changePhoneNumberDto: UserChangePhoneNumberDto
+  @MessagePattern({ cmd: "logout" }, Transport.REDIS)
+  async logout(
+    @Payload()
+    data: RequestInfo
   ) {
-    return await this.userService.changePhoneNumber(req, changePhoneNumberDto);
+    return await this.userService.logout(data);
   }
 
-  @Put("/optional/:id")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Add or update an optional data (first and last name, birthday, mobile phone number)." })
-  @ApiCreatedResponse({})
-  async addOrChangeOptionalData(@Req() req: Request, @Body(new OptionalDataValidationPipe()) optionalDataDto: AddOrUpdateOptionalDataDto) {
-    return await this.userService.addOrChangeOptionalData(req, optionalDataDto);
+  @MessagePattern({ cmd: "forgot-password" }, Transport.REDIS)
+  async forgotPassword(
+    @Payload()
+    data: IpAgentFingerprint & {
+      forgotPasswordDto: ForgotPasswordDto;
+    }
+  ) {
+    return await this.userService.forgotPassword(data);
   }
 
-  @Get("/refresh-session")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Refresh the user session." })
-  @ApiCreatedResponse({})
-  async refreshAccessToken(@Req() req: Request, @Res() res: Response) {
-    return await this.userService.refreshSession(req, res);
+  @MessagePattern({ cmd: "forgot-password-verify" }, Transport.REDIS)
+  async forgotPasswordVerify(@Payload() data: { userId: string; verifyUuidDto: VerifyUuidDto }) {
+    return await this.userService.forgotPasswordVerify(data);
+  }
+
+  @MessagePattern({ cmd: "change-email" }, Transport.REDIS)
+  async changeEmail(@Payload() data: { userId: string; changeEmailDto: UserChangeEmailDto }) {
+    return await this.userService.changeEmail(data);
+  }
+
+  @MessagePattern({ cmd: "change-password" }, Transport.REDIS)
+  async changePassword(@Payload() data: { userId: string; changePasswordDto: UserChangePasswordDto }) {
+    return await this.userService.changePassword(data);
+  }
+
+  @MessagePattern({ cmd: "change-phone" }, Transport.REDIS)
+  async changePhoneNumber(@Payload() data: { userId: string; changePhoneNumberDto: UserChangePhoneNumberDto }) {
+    return await this.userService.changePhoneNumber(data);
+  }
+
+  @MessagePattern({ cmd: "change-optional" }, Transport.REDIS)
+  async addOrChangeOptionalData(@Payload() data: { userId: string; addOrUpdateOptionalDataDto: AddOrUpdateOptionalDataDto }) {
+    return await this.userService.addOrChangeOptionalData(data);
+  }
+
+  @MessagePattern({ cmd: "refresh-session" }, Transport.REDIS)
+  async refreshAccessToken(@Payload() data: RequestInfo) {
+    return await this.userService.refreshSession(data);
   }
 }

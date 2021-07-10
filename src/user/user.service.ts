@@ -1,24 +1,24 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Request, Response } from "express";
 import { Model } from "mongoose";
 import crypto from "crypto";
 import argon2 from "argon2";
 import { v4 } from "uuid";
 import { UserLoginEmailError, UserLoginPhoneNumberError, UserLoginUsernameError } from "../pipes/interfaces/user-log-in.interface";
 import { ValidationErrorCodes } from "../exceptions/errorCodes/ValidationErrorCodes";
-import { InternalFailure } from "../pipes/interfaces/internal-failure.interface";
 import { PasswordChangeError } from "../pipes/interfaces/password-change.interface";
-import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
-import { RequestBodyException } from "../exceptions/RequestBody.exception";
-import { ValidationException } from "../exceptions/Validation.exception";
+import { InternalFailure } from "../pipes/interfaces/internal-failure.interface";
 import { EmailChangeError } from "../pipes/interfaces/email-change.interface";
-import { UserErrorCodes } from "../exceptions/errorCodes/UserErrorCodes";
 import { PhoneChangeError } from "../pipes/interfaces/phone-change.interface";
 import { UserSignUpError } from "../pipes/interfaces/user-sign-up.interface";
+import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
+import { RequestBodyException } from "../exceptions/RequestBody.exception";
+import { UserErrorCodes } from "../exceptions/errorCodes/UserErrorCodes";
+import { ValidationException } from "../exceptions/Validation.exception";
 import { InternalException } from "../exceptions/Internal.exception";
 import { AuthService } from "../auth/services/auth.service";
 import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
+import { IpAgentFingerprint, RequestInfo } from "./interfaces/request-info.interface";
 import { AddOrUpdateOptionalDataDto } from "./dto/add-or-update-optional-data.dto";
 import { ForgotPasswordDocument } from "./schemas/forgot-password.schema";
 import { UserChangePasswordDto } from "./dto/update-password.dto";
@@ -29,11 +29,14 @@ import { VaultDocument } from "./schemas/vault.schema";
 import { VerifyUuidDto } from "./dto/verify-uuid.dto";
 import { UserDocument } from "./schemas/user.schema";
 import { SignUpDto } from "./dto/sign-up.dto";
+import { ClientProxy, ClientProxyFactory, Transport } from "@nestjs/microservices";
 
 const ms = require("ms");
 
 @Injectable()
 export class UserService {
+  client: ClientProxy;
+
   constructor(
     @InjectModel("User")
     private readonly userModel: Model<UserDocument>,
@@ -42,7 +45,16 @@ export class UserService {
     @InjectModel("Forgot-Password")
     private readonly forgotPasswordModel: Model<ForgotPasswordDocument>,
     private readonly authService: AuthService
-  ) {}
+  ) {
+    this.client = ClientProxyFactory.create({
+      transport: Transport.REDIS,
+      options: {
+        url: `redis://${process.env.REDIS_DB_NAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_ENDPOINT}:${process.env.REDIS_PORT}`,
+        retryDelay: 3000,
+        retryAttempts: 10
+      }
+    });
+  }
 
   private MAXIMUM_PASSWORD_VALIDATIONS = 5;
   private HOURS_TO_VERIFY = "4h";
@@ -105,6 +117,9 @@ export class UserService {
           }
         });
         await vault.save();
+  
+        this.client.send({ cmd: "verify-email" }, { verificationCode: user.verification, email: user.email, mailType: "VERIFY_EMAIL" });
+  
         return HttpStatus.OK;
       }
     } catch (e) {
@@ -123,15 +138,20 @@ export class UserService {
     }
   }
 
-  async login(req: Request, res: Response, loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto) {
+  async login({
+    ip,
+    userAgent,
+    fingerprint,
+    loginUserDto
+  }: IpAgentFingerprint & { loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto }) {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
     try {
       const sessionData = {
-        ip: req.socket.remoteAddress,
-        userAgent: req.headers["user-agent"],
-        fingerprint: req.headers["fingerprint"].toString(),
+        ip,
+        userAgent,
+        fingerprint,
         expiresIn: Date.now() + ms("20m"),
         createdAt: Date.now()
       };
@@ -159,14 +179,19 @@ export class UserService {
         }
 
         if (user.isActive && user.blockExpires > Date.now() && user.isBlocked) {
-          res
-            .status(HttpStatus.CONFLICT)
-            .json({
-              errors: {
-                message: "You have been blocked, try later."
-              }
-            })
-            .end();
+          return {
+            errors: {
+              message: "You have been blocked, try later."
+            }
+          };
+          // res
+          //   .status(HttpStatus.CONFLICT)
+          //   .json({
+          //     errors: {
+          //       message: "You have been blocked, try later."
+          //     }
+          //   })
+          //   .end();
         }
 
         if (user.isActive && user.blockExpires !== 0 && user.blockExpires < Date.now()) {
@@ -187,14 +212,19 @@ export class UserService {
             user.isBlocked = true;
             user.loginAttempts = 0;
             await user.save();
-            res
-              .status(HttpStatus.CONFLICT)
-              .json({
-                errors: {
-                  message: `You are blocked for ${this.HOURS_TO_BLOCK.toUpperCase()}.`
-                }
-              })
-              .end();
+            return {
+              errors: {
+                message: `You are blocked for ${this.HOURS_TO_BLOCK.toUpperCase()}.`
+              }
+            };
+            // res
+            //   .status(HttpStatus.CONFLICT)
+            //   .json({
+            //     errors: {
+            //       message: `You are blocked for ${this.HOURS_TO_BLOCK.toUpperCase()}.`
+            //     }
+            //   })
+            //   .end();
           }
           errors.password = ValidationErrorCodes.INVALID_PASSWORD.value;
         }
@@ -208,13 +238,17 @@ export class UserService {
           user.loginAttempts = 0;
           user.save();
 
-          res
-            .status(HttpStatus.OK)
-            .json({
-              accessToken,
-              refreshToken
-            })
-            .end();
+          return {
+            accessToken,
+            refreshToken
+          };
+          //   res
+          //     .status(HttpStatus.OK)
+          //     .json({
+          //       accessToken,
+          //       refreshToken
+          //     })
+          //     .end();
         });
       }
     } catch (e) {
@@ -233,9 +267,9 @@ export class UserService {
     }
   }
 
-  async logout(req: Request): Promise<void> {
+  async logout({ userId, ip, userAgent, fingerprint, refreshToken }: RequestInfo): Promise<void> {
     try {
-      await this.authService.logout(req);
+      await this.authService.logout({ userId, ip, userAgent, fingerprint, refreshToken });
     } catch (e) {
       if (e instanceof InternalException) {
         throw new InternalException({
@@ -247,7 +281,7 @@ export class UserService {
     }
   }
 
-  async changeEmail(req: Request, changeEmailDto: UserChangeEmailDto) {
+  async changeEmail({ userId, changeEmailDto }: { userId: string; changeEmailDto: UserChangeEmailDto }) {
     const errors: Partial<EmailChangeError> = {};
 
     try {
@@ -263,8 +297,8 @@ export class UserService {
         throw new ValidationException(errors);
       }
 
-      await this.userModel.updateOne({ email: changeEmailDto.oldEmail }, { email: changeEmailDto.newEmail });
-      return HttpStatus.OK;
+      await this.userModel.updateOne({ id: userId, email: changeEmailDto.oldEmail, isActive: true }, { email: changeEmailDto.newEmail });
+      return HttpStatus.CREATED;
     } catch (e) {
       if (e instanceof InternalException) {
         throw new InternalException({
@@ -280,7 +314,7 @@ export class UserService {
     }
   }
 
-  async changePhoneNumber(req: Request, changePhoneNumberDto: UserChangePhoneNumberDto) {
+  async changePhoneNumber({ userId, changePhoneNumberDto }: { userId: string; changePhoneNumberDto: UserChangePhoneNumberDto }) {
     const errors: Partial<PhoneChangeError> = {};
 
     try {
@@ -297,10 +331,10 @@ export class UserService {
       }
 
       await this.userModel.updateOne(
-        { phoneNumber: changePhoneNumberDto.oldPhoneNumber },
+        { id: userId, phoneNumber: changePhoneNumberDto.oldPhoneNumber, isActive: true },
         { phoneNumber: changePhoneNumberDto.newPhoneNumber }
       );
-      return HttpStatus.OK;
+      return HttpStatus.CREATED;
     } catch (e) {
       if (e instanceof InternalException) {
         throw new InternalException({
@@ -316,17 +350,16 @@ export class UserService {
     }
   }
 
-  async changePassword(req: Request, userChangePasswordDto: UserChangePasswordDto) {
-    const userId = req.user.userId;
+  async changePassword({ userId, changePasswordDto }: { userId: string; changePasswordDto: UserChangePasswordDto }) {
     const errors: Partial<PasswordChangeError> = {};
 
     try {
       const user = await this.userModel.findOne({ id: userId, isActive: true });
       const { salt: oldSalt } = await this.vaultModel.findOne({ userId });
 
-      if (!(await argon2.verify(user.password, oldSalt + userChangePasswordDto.oldPassword))) {
+      if (!(await argon2.verify(user.password, oldSalt + changePasswordDto.oldPassword))) {
         errors.oldPassword = ValidationErrorCodes.OLD_PASSWORD_DOES_NOT_MATCH.value;
-      } else if (!(await this._validatePasswordUniqueness(userChangePasswordDto.newPassword))) {
+      } else if (!(await this._validatePasswordUniqueness(changePasswordDto.newPassword))) {
         errors.newPassword = ValidationErrorCodes.INVALID_PASSWORD.value;
       }
       if (!(await this._isEmpty(errors))) {
@@ -334,9 +367,10 @@ export class UserService {
       }
 
       const salt = crypto.randomBytes(10).toString("hex");
-      userChangePasswordDto.newPassword = await this._generatePassword(userChangePasswordDto.newPassword, salt);
-      await this.userModel.updateOne({ id: userId }, { password: userChangePasswordDto.newPassword });
+      changePasswordDto.newPassword = await this._generatePassword(changePasswordDto.newPassword, salt);
+      await this.userModel.updateOne({ id: userId }, { password: changePasswordDto.newPassword });
       await this.vaultModel.updateOne({ userId }, { salt });
+      return HttpStatus.CREATED;
     } catch (e) {
       if (e instanceof InternalException) {
         throw new InternalException({
@@ -352,9 +386,13 @@ export class UserService {
     }
   }
 
-  async addOrChangeOptionalData(req: Request, addOrUpdateOptionalDataDto: AddOrUpdateOptionalDataDto) {
-    const userId = req.user.userId;
-
+  async addOrChangeOptionalData({
+    userId,
+    addOrUpdateOptionalDataDto
+  }: {
+    userId: string;
+    addOrUpdateOptionalDataDto: AddOrUpdateOptionalDataDto;
+  }) {
     try {
       const user = await this.userModel.findOne({ id: userId, isActive: true });
 
@@ -366,6 +404,7 @@ export class UserService {
           birthday: addOrUpdateOptionalDataDto.birthday ? addOrUpdateOptionalDataDto.birthday : user.birthday
         }
       );
+      return HttpStatus.CREATED;
     } catch (e) {
       if (e instanceof InternalException) {
         throw new InternalException({
@@ -377,41 +416,44 @@ export class UserService {
     }
   }
 
-  async refreshSession(req: Request, res: Response) {
+  async refreshSession({ ip, userAgent, fingerprint, refreshToken, userId }: RequestInfo) {
     const sessionData = {
-      ip: req.socket.remoteAddress,
-      userAgent: req.headers["user-agent"],
-      fingerprint: req.headers["fingerprint"].toString(),
+      ip,
+      userAgent,
+      fingerprint,
       expiresIn: Date.now() + ms("20m"),
       createdAt: Date.now()
     };
 
     this.authService
-      .refreshSession(req, sessionData)
+      .refreshSession(
+        {
+          refreshToken,
+          userId
+        },
+        sessionData
+      )
       .then((tokens) => {
         const { accessToken, refreshToken } = tokens;
 
-        res
-          .status(HttpStatus.OK)
-          .json({
-            accessToken,
-            refreshToken
-          })
-          .end();
+        return {
+          accessToken,
+          refreshToken
+        };
       })
       .catch((e) => {
-        res
-          .status(HttpStatus.BAD_REQUEST)
-          .json({
-            errors: {
-              message: e.response.message
-            }
-          })
-          .end();
+        return HttpStatus.BAD_REQUEST;
       });
   }
 
-  async forgotPassword(req: Request, forgotPasswordDto: ForgotPasswordDto) {
+  async forgotPassword({
+    ip,
+    userAgent,
+    fingerprint,
+    forgotPasswordDto
+  }: IpAgentFingerprint & {
+    forgotPasswordDto: ForgotPasswordDto;
+  }) {
     const userExists = await this.userModel.exists({ email: forgotPasswordDto.email, isActive: true });
     try {
       if (userExists) {
@@ -419,12 +461,12 @@ export class UserService {
           email: forgotPasswordDto.email,
           verification: v4(),
           expires: Date.now() + ms(this.HOURS_TO_VERIFY),
-          ipOfRequest: req.socket.remoteAddress,
-          browserOfRequest: req.headers["user-agent"].toString() || "XX",
-          countryOfRequest: req.headers["country"].toString() || "XX"
+          ipOfRequest: ip,
+          browserOfRequest: userAgent,
+          fingerprintOfRequest: fingerprint
         });
         await forgotPassword.save();
-        // someMethodToVerifyPasswordRefresh(forgotPasswordDto.email, forgotPassword.verification);
+        this.client.send({ cmd: "reset-password" }, { verificationCode: forgotPassword.verification, email: forgotPassword.email, mailType: "RESET_PASSWORD" });
         return HttpStatus.OK;
       }
     } catch (e) {
@@ -439,8 +481,7 @@ export class UserService {
     return HttpStatus.BAD_REQUEST;
   }
 
-  async forgotPasswordVerify(req: Request, verifyUuidDto: VerifyUuidDto) {
-    const userId = req.user.userId;
+  async forgotPasswordVerify({ userId, verifyUuidDto }: { userId: string; verifyUuidDto: VerifyUuidDto }) {
     const forgotPassword = await this.forgotPasswordModel.exists({
       verification: verifyUuidDto.verification
     });
@@ -514,6 +555,7 @@ export class UserService {
       type: argon2.argon2id
     });
   }
+
   private async _isEmpty(obj) {
     if (obj !== undefined && obj !== null) {
       let isString = typeof obj === "string" || obj instanceof String;

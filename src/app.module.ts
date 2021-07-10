@@ -1,10 +1,8 @@
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
-import { UserAuthenticationMiddleware } from "./middlewares/user.authentication.middleware";
-import { ClientAuthMiddleware } from "./middlewares/client.authentication.middleware";
 import { ValidationModule } from "./pipes/validation.module";
 import { UserController } from "./user/user.controller";
 import { ClientModule } from "./client/client.module";
@@ -35,18 +33,6 @@ import { UserModule } from "./user/user.module";
     }
   ]
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(UserAuthenticationMiddleware)
-      .exclude(
-        { path: "/user/sign-up", method: RequestMethod.ALL },
-        { path: "/user/login", method: RequestMethod.ALL },
-        { path: "/user/forgot-password", method: RequestMethod.ALL },
-        { path: "/user/forgot-password-verify", method: RequestMethod.ALL }
-      )
-      .forRoutes(UserController)
-      .apply(ClientAuthMiddleware)
-      .forRoutes({ path: "client/contact", method: RequestMethod.ALL });
-  }
-}
+export class AppModule {}
+
+// TODO public API, REDIS microservices (auth, entrance, client, email verification, rooms), test, push to heroku, FRONT

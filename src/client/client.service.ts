@@ -1,16 +1,15 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Request, Response } from "express";
 import { Model } from "mongoose";
 import { v4 } from "uuid";
+// potential module dependency error
+import { IpAgentFingerprint } from "../user/interfaces/request-info.interface";
 import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
 import { InternalException } from "../exceptions/Internal.exception";
 import { AuthService } from "../auth/services/auth.service";
 import { ClientSessionDocument } from "./schemas/client-session.schema";
 import { ContactFormDocument } from "./schemas/contact-form.schema";
 import { ContactFormDto } from "./contact-form.dto";
-
-const ms = require("ms");
 
 @Injectable()
 export class ClientService {
@@ -22,7 +21,7 @@ export class ClientService {
     private readonly authService: AuthService
   ) {}
 
-  async contact(req: Request, contactFormDto: ContactFormDto): Promise<HttpStatus> {
+  async contact(contactFormDto: ContactFormDto): Promise<HttpStatus> {
     try {
       const appeal = new this.contactFormModel(contactFormDto);
       appeal.id = v4();
@@ -40,25 +39,21 @@ export class ClientService {
     }
   }
 
-  async generateToken(req: Request, res: Response): Promise<HttpStatus> {
+  async generateToken({ ip, userAgent, fingerprint }: IpAgentFingerprint): Promise<HttpStatus> {
     try {
       const sessionData = {
         clientId: v4(),
-        ip: req.socket.remoteAddress,
-        userAgent: req.headers["user-agent"],
-        fingerprint: req.headers["fingerprint"].toString()
+        ip,
+        userAgent,
+        fingerprint
       };
 
       this.authService.generateClientsJWT(sessionData).then((clientToken) => {
         new this.clientSessionModel(sessionData).save();
-        res
-          .status(HttpStatus.OK)
-          .json({
-            clientToken
-          })
-          .end();
+        return { clientToken };
       });
-      return HttpStatus.CREATED;
+      
+      return HttpStatus.BAD_REQUEST;
     } catch (e) {
       console.log(e.stack);
       if (e instanceof InternalException) {
@@ -69,9 +64,5 @@ export class ClientService {
         });
       }
     }
-  }
-
-  async _findById(clientId) {
-    return this.clientSessionModel.findOne({ clientId });
   }
 }

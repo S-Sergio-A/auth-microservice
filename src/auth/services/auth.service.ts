@@ -6,10 +6,11 @@ import { GlobalErrorCodes } from "../../exceptions/errorCodes/GlobalErrorCodes";
 import { RequestBodyException } from "../../exceptions/RequestBody.exception";
 import { TokenErrorCodes } from "../../exceptions/errorCodes/TokenErrorCodes";
 import { InternalException } from "../../exceptions/Internal.exception";
+import { RefreshSessionDocument } from "../schemas/refreshSession.schema";
 import { RefreshSessionDto } from "../dto/refresh-session.dto";
 import { ClientJWTData, JWTTokens } from "./interfaces/jwt-token.interface";
 import { SessionData } from "./interfaces/session-data.interface";
-import { RefreshSessionDocument } from "../schemas/refreshSession.schema";
+import { RequestInfo } from "../../../../public-api/src/interfaces/request-info.interface";
 
 const jwt = require("jsonwebtoken");
 const ms = require("ms");
@@ -39,26 +40,21 @@ export class AuthService {
     };
   }
 
-  async refreshSession(req: Request, sessionData: SessionData): Promise<JWTTokens> {
+  async refreshSession(
+    {
+      refreshToken,
+      userId
+    }: {
+      refreshToken: string;
+      userId: string;
+    },
+    sessionData: SessionData
+  ): Promise<JWTTokens> {
     const { userAgent, ip, fingerprint } = sessionData;
 
-    let token: string;
-    let refreshToken: string;
-    const user = req.user;
-
-    if (typeof req.headers["access-token"] === "string") {
-      token = req.headers["access-token"].split('"').join("") || req.cookies.token;
-    } else if (Array.isArray(req.headers["access-token"])) {
-      throw new RequestBodyException({
-        key: "USER_TOKEN_NOT_PROVIDED",
-        code: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.code,
-        message: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.value
-      });
-    }
-
-    if (typeof req.headers["refresh-token"] === "string") {
-      refreshToken = req.headers["refresh-token"].split('"').join("") || req.cookies.refreshToken;
-    } else if (Array.isArray(req.headers["access-token"])) {
+    if (typeof refreshToken === "string") {
+      refreshToken = refreshToken.split('"').join("");
+    } else if (Array.isArray(refreshToken)) {
       throw new RequestBodyException({
         key: "REFRESH_TOKEN_NOT_PROVIDED",
         code: TokenErrorCodes.REFRESH_TOKEN_NOT_PROVIDED.code,
@@ -67,22 +63,26 @@ export class AuthService {
     }
 
     const rows = await this.refreshSessionModel.findOne({
-      userId: user.userId
+      userId,
+      ip,
+      userAgent,
+      fingerprint,
+      refreshToken
     });
+
+    if (!rows) {
+      throw new RequestBodyException({
+        key: "INVALID_REFRESH_SESSION",
+        code: TokenErrorCodes.INVALID_REFRESH_SESSION.code,
+        message: TokenErrorCodes.INVALID_REFRESH_SESSION.value
+      });
+    }
 
     if (Date.now() > rows.createdAt + rows.expiresIn) {
       throw new RequestBodyException({
         key: "SESSION_EXPIRED",
         code: TokenErrorCodes.SESSION_EXPIRED.code,
         message: TokenErrorCodes.SESSION_EXPIRED.value
-      });
-    }
-
-    if (rows.fingerprint !== rows) {
-      throw new RequestBodyException({
-        key: "INVALID_REFRESH_SESSION",
-        code: TokenErrorCodes.INVALID_REFRESH_SESSION.code,
-        message: TokenErrorCodes.INVALID_REFRESH_SESSION.value
       });
     }
 
@@ -94,47 +94,18 @@ export class AuthService {
       expiresIn: Date.now() + ms(process.env.JWT_REFRESH_EXPIRATION_TIME)
     };
 
-    return await this.generateJWT(user.userId, newSessionData);
+    return await this.generateJWT(userId, newSessionData);
   }
 
-  async verifyToken(req: Request) {
-    let token: string;
-
-    if (typeof req.headers["access-token"] === "string") {
-      token = req.headers["access-token"].split('"').join("") || req.cookies.token;
-    } else if (Array.isArray(req.headers["access-token"])) {
-      throw new RequestBodyException({
-        key: "USER_TOKEN_NOT_PROVIDED",
-        code: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.code,
-        message: TokenErrorCodes.USER_TOKEN_NOT_PROVIDED.value
-      });
-    }
-
-    if (token) {
-      try {
-        const decrypt = await jwt.verify(token, process.env.JWT_SECRET);
-        req.user = {
-          userId: decrypt.userId
-        };
-      } catch (e) {
-        console.log(e.stack);
-        throw new RequestBodyException({
-          key: "SESSION_EXPIRED",
-          code: TokenErrorCodes.SESSION_EXPIRED.code,
-          message: TokenErrorCodes.SESSION_EXPIRED.value
-        });
-      }
-    }
-  }
-
-  async logout(req: Request): Promise<HttpStatus> {
-    const user = req.user;
-
+  async logout({ userId, ip, userAgent, fingerprint, refreshToken }: RequestInfo): Promise<HttpStatus> {
     try {
       await this.refreshSessionModel
         .deleteOne({
-          userId: user.userId,
-          ip: req.socket.remoteAddress
+          userId,
+          ip,
+          userAgent,
+          fingerprint,
+          refreshToken
         })
         .exec();
       return HttpStatus.OK;
@@ -238,37 +209,6 @@ export class AuthService {
       subject: clientId.toString(),
       expiresIn: "60d"
     });
-  }
-
-  async verifyClientsToken(req: Request) {
-    let token: string;
-
-    if (typeof req.headers["client-token"] === "string") {
-      token = req.headers["client-token"].split('"').join("") || req.cookies.clientsToken;
-    } else if (Array.isArray(req.headers["client-token"])) {
-      throw new RequestBodyException({
-        key: "CLIENT_TOKEN_NOT_PROVIDED",
-        code: TokenErrorCodes.CLIENT_TOKEN_NOT_PROVIDED.code,
-        message: TokenErrorCodes.CLIENT_TOKEN_NOT_PROVIDED.value
-      });
-    }
-
-    if (token) {
-      try {
-        const decrypt = await jwt.verify(token, process.env.CLIENTS_JWT_SECRET);
-        req.client = {
-          ip: decrypt.ip,
-          clientId: decrypt.clientId
-        };
-      } catch (e) {
-        console.log(e.stack);
-        throw new InternalException({
-          key: "INTERNAL_ERROR",
-          code: GlobalErrorCodes.INTERNAL_ERROR.code,
-          message: GlobalErrorCodes.INTERNAL_ERROR.value
-        });
-      }
-    }
   }
 
   async generateClientsJWT(clientSession: ClientJWTData) {
