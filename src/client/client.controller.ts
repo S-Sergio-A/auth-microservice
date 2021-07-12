@@ -1,15 +1,11 @@
 import { MessagePattern, Payload, Transport } from "@nestjs/microservices";
 import { Controller, UseFilters } from "@nestjs/common";
-import { RequestBodyExceptionFilter } from "../exceptions/filters/RequestBody.exception-filter";
-import { ValidationExceptionFilter } from "../exceptions/filters/Validation.exception-filter";
-import { InternalExceptionFilter } from "../exceptions/filters/Internal.exception-filter";
+import { ExceptionFilter } from "../exceptions/filters/Exception.filter";
 import { RequestInfo } from "../user/interfaces/request-info.interface";
 import { ContactFormDto } from "./contact-form.dto";
 import { ClientService } from "./client.service";
 
-@UseFilters(ValidationExceptionFilter)
-@UseFilters(RequestBodyExceptionFilter)
-@UseFilters(InternalExceptionFilter)
+@UseFilters(ExceptionFilter)
 @Controller("client")
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
