@@ -1,4 +1,4 @@
-export interface UsernameChange {
+export interface UsernameChangeError {
   oldUsername: string;
   newUsername: string;
 }

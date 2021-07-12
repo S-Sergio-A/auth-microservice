@@ -1,5 +1,4 @@
 export interface RequestInfo {
-  accessToken: string;
   ip: string;
   userAgent: string;
   fingerprint: string;
@@ -7,7 +6,7 @@ export interface RequestInfo {
   userId: string;
 }
 
-export interface IpAgentFingerprint{
+export interface IpAgentFingerprint {
   ip: string;
   userAgent: string;
   fingerprint: string;
