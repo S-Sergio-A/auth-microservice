@@ -1,6 +1,6 @@
 import { MongooseModule } from "@nestjs/mongoose";
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth/auth.module";
+import { TokenModule } from "../token/token.module";
 import { ClientSessionSchema } from "./schemas/client-session.schema";
 import { ContactFormSchema } from "./schemas/contact-form.schema";
 import { ClientController } from "./client.controller";
@@ -10,7 +10,7 @@ import { ClientService } from "./client.service";
   imports: [
     MongooseModule.forFeature([{ name: "Contact-Form", schema: ContactFormSchema }]),
     MongooseModule.forFeature([{ name: "Client-Session", schema: ClientSessionSchema }]),
-    AuthModule
+    TokenModule
   ],
   controllers: [ClientController],
   providers: [ClientService],
