@@ -1,12 +1,12 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
+import { RpcException } from "@nestjs/microservices";
 import { InjectModel } from "@nestjs/mongoose";
+import { Observable } from "rxjs";
 import { Model } from "mongoose";
 import { v4 } from "uuid";
-// potential module dependency error
 import { IpAgentFingerprint } from "../user/interfaces/request-info.interface";
 import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
-import { InternalException } from "../exceptions/Internal.exception";
-import { AuthService } from "../auth/services/auth.service";
+import { TokenService } from "../token/token.service";
 import { ClientSessionDocument } from "./schemas/client-session.schema";
 import { ContactFormDocument } from "./schemas/contact-form.schema";
 import { ContactFormDto } from "./contact-form.dto";
@@ -18,10 +18,10 @@ export class ClientService {
     private readonly contactFormModel: Model<ContactFormDocument>,
     @InjectModel("Client-Session")
     private readonly clientSessionModel: Model<ClientSessionDocument>,
-    private readonly authService: AuthService
+    private readonly authService: TokenService
   ) {}
 
-  async contact(contactFormDto: ContactFormDto): Promise<HttpStatus> {
+  async contact(contactFormDto: ContactFormDto): Promise<HttpStatus | Observable<any> | RpcException> {
     try {
       const appeal = new this.contactFormModel(contactFormDto);
       appeal.id = v4();
@@ -29,17 +29,15 @@ export class ClientService {
       return HttpStatus.OK;
     } catch (e) {
       console.log(e.stack);
-      if (e instanceof InternalException) {
-        throw new InternalException({
-          key: "INTERNAL_ERROR",
-          code: GlobalErrorCodes.INTERNAL_ERROR.code,
-          message: GlobalErrorCodes.INTERNAL_ERROR.value
-        });
-      }
+      return new RpcException({
+        key: "INTERNAL_ERROR",
+        code: GlobalErrorCodes.INTERNAL_ERROR.code,
+        message: GlobalErrorCodes.INTERNAL_ERROR.value
+      });
     }
   }
 
-  async generateToken({ ip, userAgent, fingerprint }: IpAgentFingerprint): Promise<HttpStatus> {
+  async generateToken({ ip, userAgent, fingerprint }: IpAgentFingerprint): Promise<HttpStatus | Observable<any> | RpcException> {
     try {
       const sessionData = {
         clientId: v4(),
@@ -52,17 +50,15 @@ export class ClientService {
         new this.clientSessionModel(sessionData).save();
         return { clientToken };
       });
-      
+
       return HttpStatus.BAD_REQUEST;
     } catch (e) {
       console.log(e.stack);
-      if (e instanceof InternalException) {
-        throw new InternalException({
-          key: "INTERNAL_ERROR",
-          code: GlobalErrorCodes.INTERNAL_ERROR.code,
-          message: GlobalErrorCodes.INTERNAL_ERROR.value
-        });
-      }
+      return new RpcException({
+        key: "INTERNAL_ERROR",
+        code: GlobalErrorCodes.INTERNAL_ERROR.code,
+        message: GlobalErrorCodes.INTERNAL_ERROR.value
+      });
     }
   }
 }
