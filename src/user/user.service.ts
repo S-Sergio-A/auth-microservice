@@ -120,6 +120,40 @@ export class UserService {
     }
   }
 
+  async verifyRegistration({
+    email,
+    verification
+  }: {
+    email: string;
+    verification: string;
+  }): Promise<HttpStatus | Observable<any> | RpcException> {
+    try {
+      const user = await this.userModel.exists({
+        email,
+        isActive: false,
+        verification
+      });
+
+      if (user) {
+        await this.userModel.updateOne(
+          { email, isActive: false, verification },
+          { isActive: true, verification: "", verificationExpires: 0 }
+        );
+      } else {
+        return new RpcException({
+          key: "USER_NOT_FOUND",
+          code: UserErrorCodes.USER_NOT_FOUND.code,
+          message: UserErrorCodes.USER_NOT_FOUND.value
+        });
+      }
+    } catch (e) {
+      console.log(e.stack);
+      if (e instanceof RpcException) {
+        return new RpcException(e);
+      }
+    }
+  }
+
   async login({
     ip,
     userAgent,
@@ -625,10 +659,10 @@ export class UserService {
   }
 
   async verifyPasswordReset({
-    userId,
+    email,
     verifyUuidDto
   }: {
-    userId: string;
+    email: string;
     verifyUuidDto: VerifyPasswordResetDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
     try {
@@ -640,10 +674,12 @@ export class UserService {
         if (verifyUuidDto.newPassword === verifyUuidDto.newPasswordVerification) {
           delete verifyUuidDto.newPasswordVerification;
 
+          const user = await this.userModel.findOne({ email });
+
           const salt = crypto.randomBytes(10).toString("hex");
           const newPassword = await this._generatePassword(verifyUuidDto.newPassword, salt);
-          await this.userModel.updateOne({ userId }, { password: newPassword });
-          await this.vaultModel.updateOne({ userId }, { salt });
+          await this.userModel.updateOne({ id: user.id }, { password: newPassword });
+          await this.vaultModel.updateOne({ userId: user.id }, { salt });
           return HttpStatus.OK;
         } else {
           return new RpcException({
