@@ -1,15 +1,19 @@
-import { IsDefined, IsNotEmpty, IsOptional, IsPhoneNumber } from "class-validator";
+import { IsDefined, IsNotEmpty, IsOptional, IsPhoneNumber, IsUUID } from "class-validator";
 
-export class UserChangePhoneNumberDto {
+export class ChangePhoneNumberDto {
   @IsDefined()
   @IsNotEmpty()
   @IsPhoneNumber()
   @IsOptional()
-  oldPhoneNumber: string;
-
+  readonly oldPhoneNumber: string;
+  
   @IsDefined()
   @IsNotEmpty()
   @IsPhoneNumber()
   @IsOptional()
-  newPhoneNumber: string;
+  readonly newPhoneNumber: string;
+  
+  @IsNotEmpty()
+  @IsUUID()
+  verification: string;
 }
