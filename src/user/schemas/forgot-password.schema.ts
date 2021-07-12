@@ -18,7 +18,7 @@ class ForgotPassword {
   ipOfRequest: string;
 
   @Prop({ required: true, index: false })
-  browserOfRequest: string;
+  fingerprintOfRequest: string;
 
   @Prop({ required: true, index: false })
   countryOfRequest: string;
