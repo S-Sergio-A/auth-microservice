@@ -22,6 +22,11 @@ export class UserController {
   async register(@Payload() createUserDto: SignUpDto) {
     return await this.userService.register(createUserDto);
   }
+  
+  @MessagePattern({ cmd: "verify-registration" }, Transport.REDIS)
+  async verifyRegistration(@Payload() data: { email: string; verification: string }) {
+    return await this.userService.verifyRegistration(data);
+  }
 
   @MessagePattern({ cmd: "login" }, Transport.REDIS)
   async login(
@@ -52,7 +57,7 @@ export class UserController {
   }
 
   @MessagePattern({ cmd: "verify-password-reset" }, Transport.REDIS)
-  async verifyPasswordReset(@Payload() data: { userId: string; verifyUuidDto: VerifyPasswordResetDto }) {
+  async verifyPasswordReset(@Payload() data: { email: string; verifyUuidDto: VerifyPasswordResetDto }) {
     return await this.userService.verifyPasswordReset(data);
   }
 
