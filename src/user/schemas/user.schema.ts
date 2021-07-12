@@ -29,7 +29,7 @@ class User {
   @Prop({ required: false, index: false })
   birthday: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: false, index: true })
   verification: string;
 
   @Prop({ required: false, index: false })
