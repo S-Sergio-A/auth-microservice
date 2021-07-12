@@ -59,7 +59,7 @@ export class TokenService {
       if (typeof refreshToken === "string") {
         refreshToken = refreshToken.split('"').join("");
       } else if (Array.isArray(refreshToken)) {
-        return new RpcException({
+        throw new RpcException({
           key: "REFRESH_TOKEN_NOT_PROVIDED",
           code: TokenErrorCodes.REFRESH_TOKEN_NOT_PROVIDED.code,
           message: TokenErrorCodes.REFRESH_TOKEN_NOT_PROVIDED.value
@@ -75,7 +75,7 @@ export class TokenService {
       });
 
       if (!rows) {
-        return new RpcException({
+        throw new RpcException({
           key: "INVALID_REFRESH_SESSION",
           code: TokenErrorCodes.INVALID_REFRESH_SESSION.code,
           message: TokenErrorCodes.INVALID_REFRESH_SESSION.value
@@ -83,7 +83,7 @@ export class TokenService {
       }
 
       if (Date.now() > rows.createdAt + rows.expiresIn) {
-        return new RpcException({
+        throw new RpcException({
           key: "SESSION_EXPIRED",
           code: TokenErrorCodes.SESSION_EXPIRED.code,
           message: TokenErrorCodes.SESSION_EXPIRED.value
