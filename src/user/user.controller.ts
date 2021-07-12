@@ -1,22 +1,19 @@
 import { MessagePattern, Payload, Transport } from "@nestjs/microservices";
 import { Controller, UseFilters } from "@nestjs/common";
-import { RequestBodyExceptionFilter } from "../exceptions/filters/RequestBody.exception-filter";
-import { ValidationExceptionFilter } from "../exceptions/filters/Validation.exception-filter";
-import { InternalExceptionFilter } from "../exceptions/filters/Internal.exception-filter";
+import { ExceptionFilter } from "../exceptions/filters/Exception.filter";
 import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
+import { IpAgentFingerprint, RequestInfo } from "./interfaces/request-info.interface";
 import { AddOrUpdateOptionalDataDto } from "./dto/add-or-update-optional-data.dto";
-import { UserChangePhoneNumberDto } from "./dto/update-phone.dto";
-import { UserChangePasswordDto } from "./dto/update-password.dto";
+import { VerifyPasswordResetDto } from "./dto/verify-password-reset.dto";
+import { ChangePhoneNumberDto } from "./dto/update-phone.dto";
+import { ChangePasswordDto } from "./dto/update-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
-import { UserChangeEmailDto } from "./dto/update-email.dto";
-import { VerifyUuidDto } from "./dto/verify-uuid.dto";
+import { ChangeEmailDto } from "./dto/update-email.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { UserService } from "./user.service";
-import { IpAgentFingerprint, RequestInfo } from "./interfaces/request-info.interface";
+import { ChangeUsernameDto } from "./dto/update-username.dto";
 
-@UseFilters(ValidationExceptionFilter)
-@UseFilters(RequestBodyExceptionFilter)
-@UseFilters(InternalExceptionFilter)
+@UseFilters(ExceptionFilter)
 @Controller("user")
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -45,42 +42,52 @@ export class UserController {
   }
 
   @MessagePattern({ cmd: "forgot-password" }, Transport.REDIS)
-  async forgotPassword(
+  async resetPassword(
     @Payload()
     data: IpAgentFingerprint & {
       forgotPasswordDto: ForgotPasswordDto;
     }
   ) {
-    return await this.userService.forgotPassword(data);
+    return await this.userService.restPassword(data);
   }
 
-  @MessagePattern({ cmd: "forgot-password-verify" }, Transport.REDIS)
-  async forgotPasswordVerify(@Payload() data: { userId: string; verifyUuidDto: VerifyUuidDto }) {
-    return await this.userService.forgotPasswordVerify(data);
+  @MessagePattern({ cmd: "verify-password-reset" }, Transport.REDIS)
+  async verifyPasswordReset(@Payload() data: { userId: string; verifyUuidDto: VerifyPasswordResetDto }) {
+    return await this.userService.verifyPasswordReset(data);
   }
 
   @MessagePattern({ cmd: "change-email" }, Transport.REDIS)
-  async changeEmail(@Payload() data: { userId: string; changeEmailDto: UserChangeEmailDto }) {
+  async changeEmail(@Payload() data: IpAgentFingerprint & { userId: string; changeEmailDto: ChangeEmailDto }) {
     return await this.userService.changeEmail(data);
+  }
+  
+  @MessagePattern({ cmd: "change-username" }, Transport.REDIS)
+  async changeUsername(@Payload() data: IpAgentFingerprint & { userId: string; changeUsernameDto: ChangeUsernameDto }) {
+    return await this.userService.changeUsername(data);
   }
 
   @MessagePattern({ cmd: "change-password" }, Transport.REDIS)
-  async changePassword(@Payload() data: { userId: string; changePasswordDto: UserChangePasswordDto }) {
+  async changePassword(@Payload() data: IpAgentFingerprint & { userId: string; changePasswordDto: ChangePasswordDto }) {
     return await this.userService.changePassword(data);
   }
 
   @MessagePattern({ cmd: "change-phone" }, Transport.REDIS)
-  async changePhoneNumber(@Payload() data: { userId: string; changePhoneNumberDto: UserChangePhoneNumberDto }) {
+  async changePhoneNumber(@Payload() data: IpAgentFingerprint & { userId: string; changePhoneNumberDto: ChangePhoneNumberDto }) {
     return await this.userService.changePhoneNumber(data);
+  }
+  
+  @MessagePattern({ cmd: "verify-primary-data-change" }, Transport.REDIS)
+  async verifyPrimaryDataChange(@Payload() data: { userId: string; verification: string; dataType: "email" | "password" | "username" | "phone" }) {
+    return await this.userService.verifyPrimaryDataChange(data);
   }
 
   @MessagePattern({ cmd: "change-optional" }, Transport.REDIS)
-  async addOrChangeOptionalData(@Payload() data: { userId: string; addOrUpdateOptionalDataDto: AddOrUpdateOptionalDataDto }) {
+  async addOrChangeOptionalData(@Payload() data: { userId: string; optionalDataDto: AddOrUpdateOptionalDataDto }) {
     return await this.userService.addOrChangeOptionalData(data);
   }
 
   @MessagePattern({ cmd: "refresh-session" }, Transport.REDIS)
-  async refreshAccessToken(@Payload() data: RequestInfo) {
+  async refreshSession(@Payload() data: RequestInfo) {
     return await this.userService.refreshSession(data);
   }
 }
