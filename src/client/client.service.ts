@@ -37,7 +37,11 @@ export class ClientService {
     }
   }
 
-  async generateToken({ ip, userAgent, fingerprint }: IpAgentFingerprint): Promise<HttpStatus | Observable<any> | RpcException> {
+  async generateToken({
+    ip,
+    userAgent,
+    fingerprint
+  }: IpAgentFingerprint): Promise<HttpStatus | { clientToken: string } | Observable<any> | RpcException> {
     try {
       const sessionData = {
         clientId: v4(),
@@ -46,10 +50,11 @@ export class ClientService {
         fingerprint
       };
 
-      this.authService.generateClientsJWT(sessionData).then((clientToken) => {
-        new this.clientSessionModel(sessionData).save();
+      const clientToken = await this.authService.generateClientsJWT(sessionData);
+      if (clientToken) {
+        await new this.clientSessionModel(sessionData).save();
         return { clientToken };
-      });
+      }
 
       return HttpStatus.BAD_REQUEST;
     } catch (e) {
