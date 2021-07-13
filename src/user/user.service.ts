@@ -110,8 +110,8 @@ export class UserService {
         });
         await vault.save();
 
-        return this.client.send(
-          { cmd: "verify-email" },
+        return await this.client.send(
+          { cmd: "verify" },
           { verificationCode: user.verification, email: user.email, mailType: "VERIFY_EMAIL" }
         );
       }
@@ -299,6 +299,17 @@ export class UserService {
         return new RpcException(errors);
       }
 
+      const user = await this.userModel.findOne({ id: userId, isActive: true });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
+
+      if (user.isBlocked || userChangeRequests !== 0) {
+        return new RpcException({
+          key: "USER_HAS_BEEN_BLOCKED",
+          code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
+          message: `${UserErrorCodes.USER_HAS_BEEN_BLOCKED.value} You must verify previous data change. Check your email.`
+        });
+      }
+
       await this.userModel.updateOne(
         { id: userId, email: changeEmailDto.oldEmail, isActive: true },
         {
@@ -313,18 +324,17 @@ export class UserService {
         expires: ms(this.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
-        countryOfRequest: fingerprint,
+        fingerprintOfRequest: fingerprint,
         dataType: "email",
         verified: false
       });
 
       await changePrimaryDataRequest.save();
 
-      this.client.send(
-        { cmd: "verify-email-change" },
+      return await this.client.send(
+        { cmd: "verify" },
         { verificationCode: changeEmailDto.verification, email: changeEmailDto.newEmail, mailType: "VERIFY_EMAIL_CHANGE" }
       );
-      return HttpStatus.CREATED;
     } catch (e) {
       console.log(e.stack);
       if (e instanceof RpcException) {
@@ -344,7 +354,6 @@ export class UserService {
     changeUsernameDto: ChangeUsernameDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
     const errors: Partial<UsernameChangeError> = {};
-
     try {
       const usernameMatches = await this._isExistingUsername(changeUsernameDto.oldUsername);
 
@@ -359,6 +368,28 @@ export class UserService {
       }
 
       const user = await this.userModel.findOne({ id: userId, isActive: true });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
+
+      if (user.isBlocked || userChangeRequests !== 0) {
+        return new RpcException({
+          key: "USER_HAS_BEEN_BLOCKED",
+          code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
+          message: `${UserErrorCodes.USER_HAS_BEEN_BLOCKED.value} You must verify previous data change. Check your email.`
+        });
+      }
+
+      const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
+        userId: userId,
+        verification: changeUsernameDto.verification,
+        expires: ms(this.HOURS_TO_VERIFY),
+        ipOfRequest: ip,
+        browserOfRequest: userAgent,
+        fingerprintOfRequest: fingerprint,
+        dataType: "username",
+        verified: false
+      });
+
+      await changePrimaryDataRequest.save();
 
       await this.userModel.updateOne(
         { id: userId, username: changeUsernameDto.oldUsername, isActive: true },
@@ -368,25 +399,10 @@ export class UserService {
         }
       );
 
-      const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
-        userId: userId,
-        verification: changeUsernameDto.verification,
-        expires: ms(this.HOURS_TO_VERIFY),
-        ipOfRequest: ip,
-        browserOfRequest: userAgent,
-        countryOfRequest: fingerprint,
-        dataType: "username",
-        verified: false
-      });
-
-      await changePrimaryDataRequest.save();
-
-      this.client.send(
-        { cmd: "verify-username-change" },
+      return await this.client.send(
+        { cmd: "verify" },
         { verificationCode: changeUsernameDto.verification, email: user.email, mailType: "VERIFY_USERNAME_CHANGE" }
       );
-
-      return HttpStatus.CREATED;
     } catch (e) {
       console.log(e.stack);
       if (e instanceof RpcException) {
@@ -421,6 +437,15 @@ export class UserService {
       }
 
       const user = await this.userModel.findOne({ id: userId, isActive: true });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
+
+      if (user.isBlocked || userChangeRequests !== 0) {
+        return new RpcException({
+          key: "USER_HAS_BEEN_BLOCKED",
+          code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
+          message: `${UserErrorCodes.USER_HAS_BEEN_BLOCKED.value} You must verify previous data change. Check your email.`
+        });
+      }
 
       await this.userModel.updateOne(
         { id: userId, phoneNumber: changePhoneNumberDto.oldPhoneNumber, isActive: true },
@@ -436,19 +461,17 @@ export class UserService {
         expires: ms(this.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
-        countryOfRequest: fingerprint,
+        fingerprintOfRequest: fingerprint,
         dataType: "phone",
         verified: false
       });
 
       await changePrimaryDataRequest.save();
 
-      this.client.send(
-        { cmd: "verify-phone-change" },
+      return await this.client.send(
+        { cmd: "verify" },
         { verificationCode: changePhoneNumberDto.verification, email: user.email, mailType: "VERIFY_PHONE_CHANGE" }
       );
-
-      return HttpStatus.CREATED;
     } catch (e) {
       console.log(e.stack);
       if (e instanceof RpcException) {
@@ -481,6 +504,16 @@ export class UserService {
       if (!(await this._isEmpty(errors))) {
         return new RpcException(errors);
       }
+  
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
+  
+      if (user.isBlocked || userChangeRequests !== 0) {
+        return new RpcException({
+          key: "USER_HAS_BEEN_BLOCKED",
+          code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
+          message: `${UserErrorCodes.USER_HAS_BEEN_BLOCKED.value} You must verify previous data change. Check your email.`
+        });
+      }
 
       const salt = crypto.randomBytes(10).toString("hex");
       changePasswordDto.newPassword = await this._generatePassword(changePasswordDto.newPassword, salt);
@@ -501,18 +534,17 @@ export class UserService {
         expires: ms(this.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
-        countryOfRequest: fingerprint,
+        fingerprintOfRequest: fingerprint,
         dataType: "password",
         verified: false
       });
 
       await changePrimaryDataRequest.save();
 
-      this.client.send(
-        { cmd: "verify-password-change" },
+      return await this.client.send(
+        { cmd: "verify" },
         { verificationCode: changePasswordDto.verification, email: user.email, mailType: "VERIFY_PASSWORD_CHANGE" }
       );
-      return HttpStatus.CREATED;
     } catch (e) {
       console.log(e.stack);
       if (e instanceof RpcException) {
@@ -534,7 +566,8 @@ export class UserService {
       const primaryDataChangeRequestExists = await this.changePrimaryDataDocumentModel.exists({
         userId,
         verification,
-        dataType
+        dataType,
+        verified: false
       });
 
       if (primaryDataChangeRequestExists) {
@@ -642,11 +675,10 @@ export class UserService {
           fingerprintOfRequest: fingerprint
         });
         await forgotPassword.save();
-        this.client.send(
+        return await this.client.send(
           { cmd: "reset-password" },
           { verificationCode: forgotPassword.verification, email: forgotPassword.email, mailType: "RESET_PASSWORD" }
         );
-        return HttpStatus.OK;
       } else {
         return HttpStatus.BAD_REQUEST;
       }
