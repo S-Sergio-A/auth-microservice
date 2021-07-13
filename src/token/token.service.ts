@@ -13,8 +13,6 @@ import { RefreshSessionDto } from "./refreshSession.dto";
 const jwt = require("jsonwebtoken");
 const ms = require("ms");
 
-const MAX_REFRESH_SESSIONS_COUNT = 5;
-
 @Injectable()
 export class TokenService {
   constructor(
@@ -139,7 +137,7 @@ export class TokenService {
           userId: userId
         })
         .exec();
-      return sessionsCount < MAX_REFRESH_SESSIONS_COUNT;
+      return sessionsCount < Number.parseInt(process.env.MAX_REFRESH_SESSIONS_COUNT);
     } catch (e) {
       console.log(e.stack);
       return new RpcException(e);

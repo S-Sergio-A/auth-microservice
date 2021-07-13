@@ -59,11 +59,7 @@ export class UserService {
       }
     });
   }
-
-  private MAXIMUM_PASSWORD_VALIDATIONS = 5;
-  private HOURS_TO_VERIFY = "4h";
-  private HOURS_TO_BLOCK = "6h";
-  private LOGIN_ATTEMPTS_TO_BLOCK = 5;
+  
   private counter = 0;
 
   async register(userSignUpDto: SignUpDto): Promise<HttpStatus | Observable<any> | RpcException> {
@@ -221,15 +217,15 @@ export class UserService {
         if (!(await argon2.verify(user.password, salt + loginUserDto.password))) {
           user.loginAttempts += 1;
           await user.save();
-          if (user.loginAttempts >= this.LOGIN_ATTEMPTS_TO_BLOCK) {
-            user.blockExpires = new Date(Date.now() + ms(this.HOURS_TO_BLOCK));
+          if (user.loginAttempts >= process.env.LOGIN_ATTEMPTS_TO_BLOCK) {
+            user.blockExpires = new Date(Date.now() + ms(process.env.HOURS_TO_BLOCK));
             user.isBlocked = true;
             user.loginAttempts = 0;
             await user.save();
             return new RpcException({
               key: "USER_HAS_BEEN_BLOCKED",
               code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
-              message: `You are blocked for ${this.HOURS_TO_BLOCK.toUpperCase()}.`
+              message: `You are blocked for ${process.env.HOURS_TO_BLOCK.toUpperCase()}.`
             });
           }
           errors.password = ValidationErrorCodes.INVALID_PASSWORD.value;
@@ -321,7 +317,7 @@ export class UserService {
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         userId: userId,
         verification: changeEmailDto.verification,
-        expires: ms(this.HOURS_TO_VERIFY),
+        expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
         fingerprintOfRequest: fingerprint,
@@ -381,7 +377,7 @@ export class UserService {
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         userId: userId,
         verification: changeUsernameDto.verification,
-        expires: ms(this.HOURS_TO_VERIFY),
+        expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
         fingerprintOfRequest: fingerprint,
@@ -458,7 +454,7 @@ export class UserService {
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         userId: userId,
         verification: changePhoneNumberDto.verification,
-        expires: ms(this.HOURS_TO_VERIFY),
+        expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
         fingerprintOfRequest: fingerprint,
@@ -523,7 +519,7 @@ export class UserService {
           password: changePasswordDto.newPassword,
           isBlocked: true,
           verification: changePasswordDto.verification,
-          verificationExpires: ms(this.HOURS_TO_VERIFY)
+          verificationExpires: ms(process.env.HOURS_TO_VERIFY)
         }
       );
       await this.vaultModel.updateOne({ userId }, { salt });
@@ -531,7 +527,7 @@ export class UserService {
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         userId: userId,
         verification: changePasswordDto.verification,
-        expires: ms(this.HOURS_TO_VERIFY),
+        expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
         fingerprintOfRequest: fingerprint,
@@ -625,7 +621,7 @@ export class UserService {
       ip,
       userAgent,
       fingerprint,
-      expiresIn: Date.now() + ms("20m"),
+      expiresIn: Date.now() + ms(process.env.JWT_REFRESH_EXPIRATION_TIME),
       createdAt: Date.now()
     };
 
@@ -669,7 +665,7 @@ export class UserService {
         const forgotPassword = await this.forgotPasswordModel.create({
           email: forgotPasswordDto.email,
           verification: v4(),
-          expires: Date.now() + ms(this.HOURS_TO_VERIFY),
+          expires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
           ipOfRequest: ip,
           browserOfRequest: userAgent,
           fingerprintOfRequest: fingerprint
@@ -781,7 +777,7 @@ export class UserService {
       const salt = crypto.randomBytes(10).toString("hex");
       const saltedPassword = await this._generatePassword(password, salt);
 
-      if (this.counter <= this.MAXIMUM_PASSWORD_VALIDATIONS) {
+      if (this.counter <= Number.parseInt(process.env.MAXIMUM_PASSWORD_VALIDATIONS)) {
         if (await this._isExistingPassword(saltedPassword)) {
           await this._validatePasswordUniqueness(password);
         } else {
