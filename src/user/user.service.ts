@@ -105,7 +105,12 @@ export class UserService {
           }
         });
         await vault.save();
-
+  
+        await this.client.send(
+          { cmd: "add-welcome-chat" },
+          { userId: user.id }
+        );
+        
         return await this.client.send(
           { cmd: "verify" },
           { verificationCode: user.verification, email: user.email, mailType: "VERIFY_EMAIL" }
