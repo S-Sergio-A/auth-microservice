@@ -171,7 +171,7 @@ export class UserService {
         expiresIn: Date.now() + ms(loginUserDto.rememberMe ? process.env.JWT_EXPIRATION_TIME_LONG : process.env.JWT_EXPIRATION_TIME),
         createdAt: Date.now()
       };
-
+      
       if (loginUserDto.username) {
         user = await this.userModel.findOne({ username: loginUserDto.username });
         if (!user) {
@@ -215,7 +215,7 @@ export class UserService {
         const userId = user.id;
 
         const { salt } = await this.vaultModel.findOne({ userId });
-
+        
         if (!(await argon2.verify(user.password, salt + loginUserDto.password))) {
           user.loginAttempts += 1;
           await user.save();
@@ -238,7 +238,7 @@ export class UserService {
         }
 
         const { accessToken, refreshToken } = await this.authService.generateJWT(user.id, sessionData);
-
+        
         if (accessToken && refreshToken) {
           user.loginAttempts = 0;
           user.save();
