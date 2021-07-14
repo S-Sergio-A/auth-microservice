@@ -22,7 +22,7 @@ export class UserController {
   async register(@Payload() createUserDto: SignUpDto) {
     return await this.userService.register(createUserDto);
   }
-  
+
   @MessagePattern({ cmd: "verify-registration" }, Transport.REDIS)
   async verifyRegistration(@Payload() data: { email: string; verification: string }) {
     return await this.userService.verifyRegistration(data);
@@ -31,8 +31,8 @@ export class UserController {
   @MessagePattern({ cmd: "login" }, Transport.REDIS)
   async login(
     @Payload()
-    data: {rememberMe: boolean} & IpAgentFingerprint & {
-      loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
+    data: IpAgentFingerprint & {
+      loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
     }
   ) {
     return await this.userService.login(data);
@@ -65,7 +65,7 @@ export class UserController {
   async changeEmail(@Payload() data: IpAgentFingerprint & { userId: string; changeEmailDto: ChangeEmailDto }) {
     return await this.userService.changeEmail(data);
   }
-  
+
   @MessagePattern({ cmd: "change-username" }, Transport.REDIS)
   async changeUsername(@Payload() data: IpAgentFingerprint & { userId: string; changeUsernameDto: ChangeUsernameDto }) {
     return await this.userService.changeUsername(data);
@@ -80,9 +80,11 @@ export class UserController {
   async changePhoneNumber(@Payload() data: IpAgentFingerprint & { userId: string; changePhoneNumberDto: ChangePhoneNumberDto }) {
     return await this.userService.changePhoneNumber(data);
   }
-  
+
   @MessagePattern({ cmd: "verify-primary-data-change" }, Transport.REDIS)
-  async verifyPrimaryDataChange(@Payload() data: { userId: string; verification: string; dataType: "email" | "password" | "username" | "phone" }) {
+  async verifyPrimaryDataChange(
+    @Payload() data: { userId: string; verification: string; dataType: "email" | "password" | "username" | "phone" }
+  ) {
     return await this.userService.verifyPrimaryDataChange(data);
   }
 

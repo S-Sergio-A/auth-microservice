@@ -153,14 +153,13 @@ export class UserService {
   }
 
   async login({
-    rememberMe,
     ip,
     userAgent,
     fingerprint,
     loginUserDto
-  }: { rememberMe: boolean } & IpAgentFingerprint & {
-      loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-    }): Promise<HttpStatus | JWTTokens | RpcException> {
+  }: IpAgentFingerprint & {
+    loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
+  }): Promise<HttpStatus | JWTTokens | RpcException> {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
@@ -169,7 +168,7 @@ export class UserService {
         ip,
         userAgent,
         fingerprint,
-        expiresIn: Date.now() + ms(rememberMe ? process.env.JWT_EXPIRATION_TIME_LONG : process.env.JWT_EXPIRATION_TIME),
+        expiresIn: Date.now() + ms(loginUserDto.rememberMe ? process.env.JWT_EXPIRATION_TIME_LONG : process.env.JWT_EXPIRATION_TIME),
         createdAt: Date.now()
       };
 
