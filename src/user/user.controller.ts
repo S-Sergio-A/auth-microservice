@@ -8,10 +8,10 @@ import { VerifyPasswordResetDto } from "./dto/verify-password-reset.dto";
 import { ChangePhoneNumberDto } from "./dto/update-phone.dto";
 import { ChangePasswordDto } from "./dto/update-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { ChangeUsernameDto } from "./dto/update-username.dto";
 import { ChangeEmailDto } from "./dto/update-email.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { UserService } from "./user.service";
-import { ChangeUsernameDto } from "./dto/update-username.dto";
 
 @UseFilters(ExceptionFilter)
 @Controller("user")
@@ -31,7 +31,7 @@ export class UserController {
   @MessagePattern({ cmd: "login" }, Transport.REDIS)
   async login(
     @Payload()
-    data: IpAgentFingerprint & {
+    data: {rememberMe: boolean} & IpAgentFingerprint & {
       loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
     }
   ) {

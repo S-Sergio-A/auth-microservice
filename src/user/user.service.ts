@@ -59,7 +59,7 @@ export class UserService {
       }
     });
   }
-  
+
   private counter = 0;
 
   async register(userSignUpDto: SignUpDto): Promise<HttpStatus | Observable<any> | RpcException> {
@@ -105,12 +105,9 @@ export class UserService {
           }
         });
         await vault.save();
-  
-        await this.client.send(
-          { cmd: "add-welcome-chat" },
-          { userId: user.id }
-        );
-        
+
+        await this.client.send({ cmd: "add-welcome-chat" }, { userId: user.id });
+
         return await this.client.send(
           { cmd: "verify" },
           { verificationCode: user.verification, email: user.email, mailType: "VERIFY_EMAIL" }
@@ -156,13 +153,14 @@ export class UserService {
   }
 
   async login({
+    rememberMe,
     ip,
     userAgent,
     fingerprint,
     loginUserDto
-  }: IpAgentFingerprint & { loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto }): Promise<
-    HttpStatus | JWTTokens | RpcException
-  > {
+  }: { rememberMe: boolean } & IpAgentFingerprint & {
+      loginUserDto: LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
+    }): Promise<HttpStatus | JWTTokens | RpcException> {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
@@ -171,7 +169,7 @@ export class UserService {
         ip,
         userAgent,
         fingerprint,
-        expiresIn: Date.now() + ms("10y"),
+        expiresIn: Date.now() + ms(rememberMe ? process.env.JWT_EXPIRATION_TIME_LONG : process.env.JWT_EXPIRATION_TIME),
         createdAt: Date.now()
       };
 
@@ -505,9 +503,9 @@ export class UserService {
       if (!(await this._isEmpty(errors))) {
         return new RpcException(errors);
       }
-  
+
       const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
-  
+
       if (user.isBlocked || userChangeRequests !== 0) {
         return new RpcException({
           key: "USER_HAS_BEEN_BLOCKED",

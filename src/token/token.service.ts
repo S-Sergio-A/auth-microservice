@@ -22,16 +22,16 @@ export class TokenService {
 
   async generateJWT(userId: string, sessionData: SessionData): Promise<JWTTokens> {
     try {
-      const { userAgent, ip, fingerprint } = sessionData;
+      const { userAgent, ip, fingerprint, expiresIn, createdAt } = sessionData;
 
       return {
-        accessToken: await this._generateAccessToken(userId),
+        accessToken: await this._generateAccessToken(userId, expiresIn),
         refreshToken: await this._addRefreshSession({
           userId,
           ip,
           userAgent,
           fingerprint,
-          createdAt: Date.now(),
+          createdAt,
           expiresIn: ms(process.env.JWT_REFRESH_EXPIRATION_TIME)
         })
       };
@@ -145,7 +145,7 @@ export class TokenService {
   }
 
   private async _addRefreshSessionRecord(refreshSessionDto: RefreshSessionDto) {
-    const refreshToken = await this._generateRefreshToken(refreshSessionDto.userId);
+    const refreshToken = await this._generateRefreshToken(refreshSessionDto.userId, refreshSessionDto.expiresIn);
 
     try {
       refreshSessionDto.refreshToken = refreshToken;
@@ -171,19 +171,19 @@ export class TokenService {
     }
   }
 
-  private async _generateAccessToken(userId): Promise<string> {
+  private async _generateAccessToken(userId, expiresIn): Promise<string> {
     return jwt.sign({ userId }, process.env.JWT_SECRET, {
       algorithm: "HS512",
       subject: userId.toString(),
-      expiresIn: "10y"
+      expiresIn: expiresIn
     });
   }
 
-  private async _generateRefreshToken(userId): Promise<string> {
+  private async _generateRefreshToken(userId, expiresIn): Promise<string> {
     return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
       algorithm: "HS512",
       subject: userId.toString(),
-      expiresIn: "60d"
+      expiresIn: expiresIn
     });
   }
 
@@ -191,7 +191,7 @@ export class TokenService {
     return jwt.sign({ clientId, ip }, process.env.CLIENTS_JWT_SECRET, {
       algorithm: "HS512",
       subject: clientId.toString(),
-      expiresIn: "1y"
+      expiresIn: ms(process.env.JWT_REFRESH_EXPIRATION_TIME)
     });
   }
 
