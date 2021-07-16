@@ -1,12 +1,13 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
+import { UserDocument } from "./user.schema";
 
 export type ChangePrimaryDataDocument = ChangePrimaryData & Document;
 
 @Schema()
 class ChangePrimaryData {
-  @Prop({ required: true, index: true })
-  userId: string;
+  @Prop({ required: true, index: false, ref: "User", type: [Types.ObjectId] })
+  user: Types.ObjectId;
 
   @Prop({ required: true, index: true })
   verification: string;

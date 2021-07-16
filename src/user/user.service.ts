@@ -2,7 +2,7 @@ import { ClientProxy, ClientProxyFactory, RpcException, Transport } from "@nestj
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Observable } from "rxjs";
-import { Model } from "mongoose";
+import { Model, ObjectId, Types } from "mongoose";
 import crypto from "crypto";
 import argon2 from "argon2";
 import { v4 } from "uuid";
@@ -88,7 +88,7 @@ export class UserService {
         userSignUpDto.password = await this._generatePassword(userSignUpDto.password, salt);
 
         const user = new this.userModel(userSignUpDto);
-        const vault = new this.vaultModel({ userId: user.id, salt });
+        const vault = new this.vaultModel({ user: user._id, salt });
 
         if (!vault) {
           return new RpcException({
@@ -106,7 +106,7 @@ export class UserService {
         });
         await vault.save();
 
-        await this.client.send({ cmd: "add-welcome-chat" }, { userId: user.id });
+        await this.client.send({ cmd: "add-welcome-chat" }, { user: user._id });
 
         return await this.client.send(
           { cmd: "verify" },
@@ -159,7 +159,7 @@ export class UserService {
     loginUserDto
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-  }): Promise<HttpStatus | (JWTTokens & { userId: string; username: string }) | RpcException> {
+  }): Promise<HttpStatus | (JWTTokens & { userId: string; }) | RpcException> {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
@@ -212,7 +212,7 @@ export class UserService {
           user.save();
         }
 
-        const userId = user.id;
+        const userId = user._id;
 
         const { salt } = await this.vaultModel.findOne({ userId });
 
@@ -237,15 +237,14 @@ export class UserService {
           return new RpcException(errors);
         }
 
-        const { accessToken, refreshToken } = await this.authService.generateJWT(user.id, sessionData);
+        const { accessToken, refreshToken } = await this.authService.generateJWT(user._id, sessionData);
 
         if (accessToken && refreshToken) {
           user.loginAttempts = 0;
           user.save();
 
           return {
-            userId: user.id,
-            username: user.username,
+            userId: user._id,
             accessToken,
             refreshToken
           };
@@ -299,10 +298,10 @@ export class UserService {
         return new RpcException(errors);
       }
 
-      const user = await this.userModel.findOne({ id: userId, isActive: true });
-      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
+      const userRecord = await this.userModel.findOne({ _id: userId, isActive: true });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ user: Types.ObjectId(userId), verified: false });
 
-      if (user.isBlocked || userChangeRequests !== 0) {
+      if (userRecord.isBlocked || userChangeRequests !== 0) {
         return new RpcException({
           key: "USER_HAS_BEEN_BLOCKED",
           code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
@@ -311,7 +310,7 @@ export class UserService {
       }
 
       await this.userModel.updateOne(
-        { id: userId, email: changeEmailDto.oldEmail, isActive: true },
+        { _id: Types.ObjectId(userId), email: changeEmailDto.oldEmail, isActive: true },
         {
           email: changeEmailDto.newEmail,
           isBlocked: true
@@ -319,7 +318,7 @@ export class UserService {
       );
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
-        userId: userId,
+        user: Types.ObjectId(userId),
         verification: changeEmailDto.verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
@@ -367,8 +366,8 @@ export class UserService {
         return new RpcException(errors);
       }
 
-      const user = await this.userModel.findOne({ id: userId, isActive: true });
-      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
+      const user = await this.userModel.findOne({ _id: Types.ObjectId(userId), isActive: true });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ user: Types.ObjectId(userId), verified: false });
 
       if (user.isBlocked || userChangeRequests !== 0) {
         return new RpcException({
@@ -379,7 +378,7 @@ export class UserService {
       }
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
-        userId: userId,
+        user: Types.ObjectId(userId),
         verification: changeUsernameDto.verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
@@ -392,7 +391,7 @@ export class UserService {
       await changePrimaryDataRequest.save();
 
       await this.userModel.updateOne(
-        { id: userId, username: changeUsernameDto.oldUsername, isActive: true },
+        { _id: userId, username: changeUsernameDto.oldUsername, isActive: true },
         {
           username: changeUsernameDto.newUsername,
           isBlocked: true
@@ -436,7 +435,7 @@ export class UserService {
         return new RpcException(errors);
       }
 
-      const user = await this.userModel.findOne({ id: userId, isActive: true });
+      const user = await this.userModel.findOne({ _id: userId, isActive: true });
       const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
 
       if (user.isBlocked || userChangeRequests !== 0) {
@@ -448,7 +447,7 @@ export class UserService {
       }
 
       await this.userModel.updateOne(
-        { id: userId, phoneNumber: changePhoneNumberDto.oldPhoneNumber, isActive: true },
+        { _id: userId, phoneNumber: changePhoneNumberDto.oldPhoneNumber, isActive: true },
         {
           phoneNumber: changePhoneNumberDto.newPhoneNumber,
           isBlocked: true
@@ -456,7 +455,7 @@ export class UserService {
       );
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
-        userId: userId,
+        user: Types.ObjectId(userId),
         verification: changePhoneNumberDto.verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
@@ -493,7 +492,7 @@ export class UserService {
     const errors: Partial<PasswordChangeError> = {};
 
     try {
-      const user = await this.userModel.findOne({ id: userId, isActive: true });
+      const user = await this.userModel.findOne({ _id: userId, isActive: true });
       const { salt: oldSalt } = await this.vaultModel.findOne({ userId });
 
       if (!(await argon2.verify(user.password, oldSalt + changePasswordDto.oldPassword))) {
@@ -518,7 +517,7 @@ export class UserService {
       const salt = crypto.randomBytes(10).toString("hex");
       changePasswordDto.newPassword = await this._generatePassword(changePasswordDto.newPassword, salt);
       await this.userModel.updateOne(
-        { id: userId },
+        { _id: userId },
         {
           password: changePasswordDto.newPassword,
           isBlocked: true,
@@ -529,7 +528,7 @@ export class UserService {
       await this.vaultModel.updateOne({ userId }, { salt });
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
-        userId: userId,
+        user: userId,
         verification: changePasswordDto.verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
@@ -601,10 +600,10 @@ export class UserService {
   }): Promise<HttpStatus | Observable<any> | RpcException> {
     console.log(optionalDataDto);
     try {
-      const user = await this.userModel.findOne({ id: userId, isActive: true });
+      const user = await this.userModel.findOne({ _id: userId, isActive: true });
 
       await this.userModel.updateOne(
-        { id: userId },
+        { _id: userId },
         {
           firstName: optionalDataDto.hasOwnProperty("firstName") ? optionalDataDto.firstName : user.firstName,
           lastName: optionalDataDto.hasOwnProperty("lastName") ? optionalDataDto.lastName : user.lastName,
@@ -710,8 +709,8 @@ export class UserService {
 
           const salt = crypto.randomBytes(10).toString("hex");
           const newPassword = await this._generatePassword(verifyUuidDto.newPassword, salt);
-          await this.userModel.updateOne({ id: user.id }, { password: newPassword });
-          await this.vaultModel.updateOne({ userId: user.id }, { salt });
+          await this.userModel.updateOne({ _id: user._id }, { password: newPassword });
+          await this.vaultModel.updateOne({ user: user._id }, { salt });
           return HttpStatus.OK;
         } else {
           return new RpcException({
@@ -731,9 +730,9 @@ export class UserService {
     }
   }
 
-  async _findById(id): Promise<UserDocument | RpcException> {
+  async _findById(userId): Promise<UserDocument | RpcException> {
     try {
-      return this.userModel.findOne({ id });
+      return this.userModel.findOne({ _id: userId });
     } catch (e) {
       console.log(e.stack);
       return new RpcException(e);

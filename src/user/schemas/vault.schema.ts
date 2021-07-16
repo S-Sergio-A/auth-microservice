@@ -1,12 +1,12 @@
 import { Schema, SchemaFactory, Prop } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 export type VaultDocument = Vault & Document;
 
 @Schema()
 class Vault {
-  @Prop({ required: true, index: true, ref: "User" })
-  userId: string;
+  @Prop({ required: true, index: false, ref: "User", type: [Types.ObjectId] })
+  user: Types.ObjectId;
 
   @Prop({ required: true, index: true })
   salt: string;
