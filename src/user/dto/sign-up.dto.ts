@@ -1,4 +1,4 @@
-import { IsDefined, IsEmail, IsNotEmpty, IsOptional, IsPhoneNumber, IsString, Length } from "class-validator";
+import { IsDefined, IsEmail, IsNotEmpty, IsOptional, IsPhoneNumber, IsString, IsUrl, Length } from "class-validator";
 
 export class SignUpDto {
   @IsDefined()
@@ -36,4 +36,10 @@ export class SignUpDto {
   @IsPhoneNumber()
   @IsOptional()
   phoneNumber: string;
+  
+  @IsDefined()
+  @IsNotEmpty()
+  @IsUrl()
+  @IsOptional()
+  photo: string;
 }
