@@ -159,7 +159,7 @@ export class UserService {
     loginUserDto
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-  }): Promise<HttpStatus | (JWTTokens & { userId: string }) | RpcException> {
+  }): Promise<HttpStatus | (JWTTokens & { userId: string; username: string }) | RpcException> {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
