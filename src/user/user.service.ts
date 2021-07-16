@@ -245,6 +245,7 @@ export class UserService {
 
           return {
             userId: user.id,
+            username: user.username,
             accessToken,
             refreshToken
           };
