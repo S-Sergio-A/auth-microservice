@@ -159,7 +159,7 @@ export class UserService {
     loginUserDto
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-  }): Promise<HttpStatus | (JWTTokens & { userId: string; }) | RpcException> {
+  }): Promise<HttpStatus | (JWTTokens & { userId: string }) | RpcException> {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
@@ -299,7 +299,10 @@ export class UserService {
       }
 
       const userRecord = await this.userModel.findOne({ _id: userId, isActive: true });
-      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ user: Types.ObjectId(userId), verified: false });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({
+        user: Types.ObjectId(userId),
+        verified: false
+      });
 
       if (userRecord.isBlocked || userChangeRequests !== 0) {
         return new RpcException({
@@ -367,7 +370,10 @@ export class UserService {
       }
 
       const user = await this.userModel.findOne({ _id: Types.ObjectId(userId), isActive: true });
-      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ user: Types.ObjectId(userId), verified: false });
+      const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({
+        user: Types.ObjectId(userId),
+        verified: false
+      });
 
       if (user.isBlocked || userChangeRequests !== 0) {
         return new RpcException({
