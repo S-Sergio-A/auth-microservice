@@ -6,19 +6,19 @@ export class ContactFormDto {
   @IsString()
   @Length(36, 36)
   id: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsEmail()
   @Length(6, 254)
   readonly clientEmail: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsString()
   @Length(2, 100)
   readonly clientFullName: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsString()

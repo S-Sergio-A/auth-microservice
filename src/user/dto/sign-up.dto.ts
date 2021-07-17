@@ -36,7 +36,7 @@ export class SignUpDto {
   @IsPhoneNumber()
   @IsOptional()
   phoneNumber: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsUrl()

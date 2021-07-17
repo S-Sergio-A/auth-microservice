@@ -6,13 +6,13 @@ export class ChangeUsernameDto {
   @IsString()
   @Length(4, 30)
   readonly oldUsername: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsString()
   @Length(4, 30)
   readonly newUsername: string;
-  
+
   @IsNotEmpty()
   @IsUUID()
   verification: string;

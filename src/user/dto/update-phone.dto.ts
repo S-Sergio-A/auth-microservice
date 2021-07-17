@@ -6,13 +6,13 @@ export class ChangePhoneNumberDto {
   @IsPhoneNumber()
   @IsOptional()
   readonly oldPhoneNumber: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsPhoneNumber()
   @IsOptional()
   readonly newPhoneNumber: string;
-  
+
   @IsNotEmpty()
   @IsUUID()
   verification: string;

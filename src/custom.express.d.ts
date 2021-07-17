@@ -1,4 +1,4 @@
-import { ClientJWTData } from './token/interfaces/jwt-token.interface';
+import { ClientJWTData } from "./token/interfaces/jwt-token.interface";
 
 declare global {
   namespace Express {

@@ -6,13 +6,13 @@ export class ChangePasswordDto {
   @IsString()
   @Length(8, 50)
   oldPassword: string;
-  
+
   @IsDefined()
   @IsNotEmpty()
   @IsString()
   @Length(8, 50)
   newPassword: string;
-  
+
   @IsNotEmpty()
   @IsUUID()
   verification: string;
