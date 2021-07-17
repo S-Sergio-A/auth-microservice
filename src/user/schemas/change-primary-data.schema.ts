@@ -23,7 +23,7 @@ class ChangePrimaryData {
 
   @Prop({ required: true, index: false })
   fingerprintOfRequest: string;
-  
+
   @Prop({ required: true, index: false })
   dataType: "email" | "password" | "username" | "phone";
 
