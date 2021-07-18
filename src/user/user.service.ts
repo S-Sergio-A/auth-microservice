@@ -2,7 +2,7 @@ import { ClientProxy, ClientProxyFactory, RpcException, Transport } from "@nestj
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Observable } from "rxjs";
-import { Model, ObjectId, Types } from "mongoose";
+import { Model, Types } from "mongoose";
 import crypto from "crypto";
 import argon2 from "argon2";
 import { v4 } from "uuid";

@@ -5,7 +5,7 @@ export type VaultDocument = Vault & Document;
 
 @Schema()
 class Vault {
-  @Prop({ required: true, index: false, ref: "User", type: [Types.ObjectId] })
+  @Prop({ required: true, index: false, ref: "User", type: Types.ObjectId })
   user: Types.ObjectId;
 
   @Prop({ required: true, index: true })
