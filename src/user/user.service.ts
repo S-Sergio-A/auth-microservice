@@ -212,9 +212,7 @@ export class UserService {
           user.save();
         }
 
-        const userId = user._id;
-
-        const { salt } = await this.vaultModel.findOne({ userId });
+        const { salt } = await this.vaultModel.findOne({ user: user._id });
 
         if (!(await argon2.verify(user.password, salt + loginUserDto.password))) {
           user.loginAttempts += 1;
@@ -604,7 +602,6 @@ export class UserService {
     userId: string;
     optionalDataDto: AddOrUpdateOptionalDataDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
-    console.log(optionalDataDto);
     try {
       const user = await this.userModel.findOne({ _id: userId, isActive: true });
 
@@ -613,7 +610,8 @@ export class UserService {
         {
           firstName: optionalDataDto.hasOwnProperty("firstName") ? optionalDataDto.firstName : user.firstName,
           lastName: optionalDataDto.hasOwnProperty("lastName") ? optionalDataDto.lastName : user.lastName,
-          birthday: optionalDataDto.hasOwnProperty("birthday") ? optionalDataDto.birthday : user.birthday
+          birthday: optionalDataDto.hasOwnProperty("birthday") ? optionalDataDto.birthday : user.birthday,
+          photo: optionalDataDto.hasOwnProperty("photo") ? optionalDataDto.photo : user.photo
         }
       );
       return HttpStatus.CREATED;
