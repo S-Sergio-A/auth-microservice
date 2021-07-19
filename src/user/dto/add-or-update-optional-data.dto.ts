@@ -1,4 +1,4 @@
-import { IsDate, IsDefined, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsDate, IsDefined, IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
 
 export class AddOrUpdateOptionalDataDto {
   @IsDefined()
@@ -18,4 +18,10 @@ export class AddOrUpdateOptionalDataDto {
   @IsDate()
   @IsOptional()
   birthday: string;
+  
+  @IsDefined()
+  @IsNotEmpty()
+  @IsUrl()
+  @IsOptional()
+  photo: string;
 }
