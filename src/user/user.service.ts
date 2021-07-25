@@ -159,7 +159,22 @@ export class UserService {
     loginUserDto
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-  }): Promise<HttpStatus | (JWTTokens & { userId: string }) | RpcException> {
+  }): Promise<
+    | HttpStatus
+    | (JWTTokens & {
+        user: {
+          _id: string;
+          email: string;
+          username: string;
+          phoneNumber: string;
+          firstName: string;
+          lastName: string;
+          birthday: string;
+          photo: string;
+        };
+      })
+    | RpcException
+  > {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
@@ -241,8 +256,19 @@ export class UserService {
           user.loginAttempts = 0;
           user.save();
 
+          const userData = {
+            _id: user._id,
+            email: user.email,
+            username: user.username,
+            phoneNumber: user.phoneNumber,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            birthday: user.birthday,
+            photo: user.photo
+          };
+
           return {
-            userId: user._id,
+            user: userData,
             accessToken,
             refreshToken
           };
