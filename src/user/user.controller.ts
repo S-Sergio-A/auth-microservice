@@ -17,7 +17,12 @@ import { UserService } from "./user.service";
 @Controller("user")
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
+  
+  @MessagePattern({ cmd: "invoke" }, Transport.REDIS)
+  async invoke(): Promise<void> {
+    console.log("auth-service invoked");
+  }
+  
   @MessagePattern({ cmd: "register" }, Transport.REDIS)
   async register(@Payload() createUserDto: SignUpDto) {
     return await this.userService.register(createUserDto);
