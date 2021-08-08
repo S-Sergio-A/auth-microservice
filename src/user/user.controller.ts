@@ -92,10 +92,15 @@ export class UserController {
   ) {
     return await this.userService.verifyPrimaryDataChange(data);
   }
-
+  
   @MessagePattern({ cmd: "change-optional" }, Transport.REDIS)
   async addOrChangeOptionalData(@Payload() data: { userId: string; optionalDataDto: AddOrUpdateOptionalDataDto }) {
     return await this.userService.addOrChangeOptionalData(data);
+  }
+  
+  @MessagePattern({ cmd: "change-photo" }, Transport.REDIS)
+  async changePhoto(@Payload() data: { userId: string; photo: any }) {
+    return await this.userService.changePhoto(data);
   }
 
   @MessagePattern({ cmd: "refresh-session" }, Transport.REDIS)
