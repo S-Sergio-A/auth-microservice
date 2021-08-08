@@ -34,6 +34,14 @@ import { UserDocument } from "./schemas/user.schema";
 import { SignUpDto } from "./dto/sign-up.dto";
 
 const ms = require("ms");
+const cloudinary = require("cloudinary");
+
+cloudinary.config({
+  cloud_name: "gachi322",
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 @Injectable()
 export class UserService {
@@ -636,8 +644,36 @@ export class UserService {
         {
           firstName: optionalDataDto.hasOwnProperty("firstName") ? optionalDataDto.firstName : user.firstName,
           lastName: optionalDataDto.hasOwnProperty("lastName") ? optionalDataDto.lastName : user.lastName,
-          birthday: optionalDataDto.hasOwnProperty("birthday") ? optionalDataDto.birthday : user.birthday,
-          photo: optionalDataDto.hasOwnProperty("photo") ? optionalDataDto.photo : user.photo
+          birthday: optionalDataDto.hasOwnProperty("birthday") ? optionalDataDto.birthday : user.birthday
+        }
+      );
+      return HttpStatus.CREATED;
+    } catch (e) {
+      console.log(e.stack);
+      if (e instanceof RpcException) {
+        return new RpcException(e);
+      }
+    }
+  }
+
+  async changePhoto({ userId, photo }: { userId: string; photo: any }): Promise<HttpStatus | Observable<any> | RpcException> {
+    try {
+      const user = await this.userModel.findOne({ _id: userId, isActive: true });
+      let resultingImageUrl;
+
+      cloudinary.v2.uploader.upload_stream(
+        { resource_type: "raw", folder: `ChatiZZe/${user._id}/`, public_id: `photo__${new Date(Date.now().toLocaleString("Ru-ru"))}` },
+        (error, result) => {
+          if (!error && result.url) {
+            resultingImageUrl = result.secure_url;
+          }
+        }
+      ).end(photo);
+
+      await this.userModel.updateOne(
+        { _id: userId },
+        {
+          photo: resultingImageUrl ? resultingImageUrl : user.photo
         }
       );
       return HttpStatus.CREATED;
