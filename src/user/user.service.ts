@@ -661,14 +661,15 @@ export class UserService {
       const user = await this.userModel.findOne({ _id: userId, isActive: true });
       let resultingImageUrl;
 
-      cloudinary.v2.uploader.upload_stream(
-        { resource_type: "raw", folder: `ChatiZZe/${user._id}/`, public_id: `photo__${new Date(Date.now().toLocaleString("Ru-ru"))}` },
+      cloudinary.v2.uploader.upload(
+        photo,
+        { folder: `ChatiZZe/${user._id}/`, public_id: `photo__${new Date(Date.now().toLocaleString("Ru-ru"))}` },
         (error, result) => {
           if (!error && result.url) {
             resultingImageUrl = result.secure_url;
           }
         }
-      ).end(photo);
+      );
 
       await this.userModel.updateOne(
         { _id: userId },
