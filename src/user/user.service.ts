@@ -65,23 +65,23 @@ export class UserService {
   private counter = 0;
 
   async register(userSignUpDto: SignUpDto): Promise<HttpStatus | Observable<any> | RpcException> {
-    const errors: Partial<UserSignUpError> = {};
+    const error: Partial<UserSignUpError> = {};
 
     try {
       if (await this._isExistingEmail(userSignUpDto.email)) {
-        errors.email = ValidationErrorCodes.EMAIL_ALREADY_EXISTS.value;
+        error.email = ValidationErrorCodes.EMAIL_ALREADY_EXISTS.value;
       }
       if (await this._isExistingUsername(userSignUpDto.username)) {
-        errors.username = ValidationErrorCodes.USERNAME_ALREADY_EXISTS.value;
+        error.username = ValidationErrorCodes.USERNAME_ALREADY_EXISTS.value;
       }
       if (!(await this._validatePasswordUniqueness(userSignUpDto.password))) {
-        errors.password = ValidationErrorCodes.INVALID_PASSWORD.value;
+        error.password = ValidationErrorCodes.INVALID_PASSWORD.value;
       }
       if (await this._isExistingPhone(userSignUpDto.phoneNumber)) {
-        errors.phoneNumber = ValidationErrorCodes.TEL_NUM_ALREADY_EXISTS.value;
+        error.phoneNumber = ValidationErrorCodes.TEL_NUM_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(errors))) {
-        return new RpcException(errors);
+      if (!(await this._isEmpty(error))) {
+        return new RpcException(error);
       }
 
       if (userSignUpDto.password === userSignUpDto.passwordVerification) {
@@ -162,7 +162,7 @@ export class UserService {
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
   }): Promise<HttpStatus | (JWTTokens & UserData) | RpcException> {
-    let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
+    let error: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
     try {
@@ -177,27 +177,27 @@ export class UserService {
       if (loginUserDto.username) {
         user = await this.userModel.findOne({ username: loginUserDto.username });
         if (!user) {
-          errors.username = ValidationErrorCodes.INVALID_USERNAME.value;
+          error.username = ValidationErrorCodes.INVALID_USERNAME.value;
         }
       } else if (loginUserDto.phoneNumber) {
         user = await this.userModel.findOne({ phoneNumber: loginUserDto.phoneNumber });
         if (!user) {
-          errors.username = ValidationErrorCodes.INVALID_TEL_NUM.value;
+          error.username = ValidationErrorCodes.INVALID_TEL_NUM.value;
         }
       } else if (loginUserDto.email) {
         user = await this.userModel.findOne({ email: loginUserDto.email });
         if (!user) {
-          errors.email = ValidationErrorCodes.INVALID_EMAIL.value;
+          error.email = ValidationErrorCodes.INVALID_EMAIL.value;
         }
       }
 
-      if (!(await this._isEmpty(errors))) {
-        return new RpcException(errors);
+      if (!(await this._isEmpty(error))) {
+        return new RpcException(error);
       }
 
       if (!!user) {
         if (!user.isActive) {
-          errors.internalFailure = UserErrorCodes.NOT_ACTIVE.value;
+          error.internalFailure = UserErrorCodes.NOT_ACTIVE.value;
         }
 
         if (user.isActive && user.blockExpires > Date.now() && user.isBlocked) {
@@ -230,11 +230,11 @@ export class UserService {
               message: `You are blocked for ${process.env.HOURS_TO_BLOCK.toUpperCase()}.`
             });
           }
-          errors.password = ValidationErrorCodes.INVALID_PASSWORD.value;
+          error.password = ValidationErrorCodes.INVALID_PASSWORD.value;
         }
 
-        if (!(await this._isEmpty(errors))) {
-          return new RpcException(errors);
+        if (!(await this._isEmpty(error))) {
+          return new RpcException(error);
         }
 
         const { accessToken, refreshToken } = await this.authService.generateJWT(user._id, sessionData);
@@ -294,19 +294,19 @@ export class UserService {
     userId: string;
     changeEmailDto: ChangeEmailDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
-    const errors: Partial<EmailChangeError> = {};
+    const error: Partial<EmailChangeError> = {};
 
     try {
       const emailMatches = await this._isExistingEmail(changeEmailDto.oldEmail);
 
       if (!emailMatches) {
-        errors.oldEmail = ValidationErrorCodes.OLD_EMAIL_DOES_NOT_MATCH.value;
+        error.oldEmail = ValidationErrorCodes.OLD_EMAIL_DOES_NOT_MATCH.value;
       }
       if (await this._isExistingEmail(changeEmailDto.newEmail)) {
-        errors.newEmail = ValidationErrorCodes.EMAIL_ALREADY_EXISTS.value;
+        error.newEmail = ValidationErrorCodes.EMAIL_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(errors))) {
-        return new RpcException(errors);
+      if (!(await this._isEmpty(error))) {
+        return new RpcException(error);
       }
 
       const userRecord = await this.userModel.findOne({ _id: userId, isActive: true });
@@ -366,18 +366,18 @@ export class UserService {
     userId: string;
     changeUsernameDto: ChangeUsernameDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
-    const errors: Partial<UsernameChangeError> = {};
+    const error: Partial<UsernameChangeError> = {};
     try {
       const usernameMatches = await this._isExistingUsername(changeUsernameDto.oldUsername);
 
       if (!usernameMatches) {
-        errors.oldUsername = ValidationErrorCodes.OLD_USERNAME_DOES_NOT_MATCH.value;
+        error.oldUsername = ValidationErrorCodes.OLD_USERNAME_DOES_NOT_MATCH.value;
       }
       if (await this._isExistingUsername(changeUsernameDto.newUsername)) {
-        errors.newUsername = ValidationErrorCodes.USERNAME_ALREADY_EXISTS.value;
+        error.newUsername = ValidationErrorCodes.USERNAME_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(errors))) {
-        return new RpcException(errors);
+      if (!(await this._isEmpty(error))) {
+        return new RpcException(error);
       }
 
       const user = await this.userModel.findOne({ _id: Types.ObjectId(userId), isActive: true });
@@ -437,19 +437,19 @@ export class UserService {
     userId: string;
     changePhoneNumberDto: ChangePhoneNumberDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
-    const errors: Partial<PhoneChangeError> = {};
+    const error: Partial<PhoneChangeError> = {};
 
     try {
       const phoneMatches = await this._isExistingPhone(changePhoneNumberDto.oldPhoneNumber);
 
       if (!phoneMatches) {
-        errors.oldPhoneNumber = ValidationErrorCodes.OLD_TEL_NUM_DOES_NOT_MATCH.value;
+        error.oldPhoneNumber = ValidationErrorCodes.OLD_TEL_NUM_DOES_NOT_MATCH.value;
       }
       if (await this._isExistingEmail(changePhoneNumberDto.newPhoneNumber)) {
-        errors.newPhoneNumber = ValidationErrorCodes.TEL_NUM_ALREADY_EXISTS.value;
+        error.newPhoneNumber = ValidationErrorCodes.TEL_NUM_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(errors))) {
-        return new RpcException(errors);
+      if (!(await this._isEmpty(error))) {
+        return new RpcException(error);
       }
 
       const user = await this.userModel.findOne({ _id: userId, isActive: true });
@@ -506,19 +506,19 @@ export class UserService {
     userId: string;
     changePasswordDto: ChangePasswordDto;
   }): Promise<HttpStatus | Observable<any> | RpcException> {
-    const errors: Partial<PasswordChangeError> = {};
+    const error: Partial<PasswordChangeError> = {};
 
     try {
       const user = await this.userModel.findOne({ _id: userId, isActive: true });
       const { salt: oldSalt } = await this.vaultModel.findOne({ userId });
 
       if (!(await argon2.verify(user.password, oldSalt + changePasswordDto.oldPassword))) {
-        errors.oldPassword = ValidationErrorCodes.OLD_PASSWORD_DOES_NOT_MATCH.value;
+        error.oldPassword = ValidationErrorCodes.OLD_PASSWORD_DOES_NOT_MATCH.value;
       } else if (!(await this._validatePasswordUniqueness(changePasswordDto.newPassword))) {
-        errors.newPassword = ValidationErrorCodes.INVALID_PASSWORD.value;
+        error.newPassword = ValidationErrorCodes.INVALID_PASSWORD.value;
       }
-      if (!(await this._isEmpty(errors))) {
-        return new RpcException(errors);
+      if (!(await this._isEmpty(error))) {
+        return new RpcException(error);
       }
 
       const userChangeRequests = await this.changePrimaryDataDocumentModel.countDocuments({ userId, verified: false });
