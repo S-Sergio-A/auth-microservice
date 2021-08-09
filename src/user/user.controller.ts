@@ -17,12 +17,12 @@ import { UserService } from "./user.service";
 @Controller("user")
 export class UserController {
   constructor(private readonly userService: UserService) {}
-  
+
   @MessagePattern({ cmd: "invoke" }, Transport.REDIS)
   async invoke(): Promise<void> {
     console.log("auth-service invoked");
   }
-  
+
   @MessagePattern({ cmd: "register" }, Transport.REDIS)
   async register(@Payload() createUserDto: SignUpDto) {
     return await this.userService.register(createUserDto);
@@ -92,12 +92,12 @@ export class UserController {
   ) {
     return await this.userService.verifyPrimaryDataChange(data);
   }
-  
+
   @MessagePattern({ cmd: "change-optional" }, Transport.REDIS)
   async addOrChangeOptionalData(@Payload() data: { userId: string; optionalDataDto: AddOrUpdateOptionalDataDto }) {
     return await this.userService.addOrChangeOptionalData(data);
   }
-  
+
   @MessagePattern({ cmd: "change-photo" }, Transport.REDIS)
   async changePhoto(@Payload() data: { userId: string; photo: any }) {
     return await this.userService.changePhoto(data);
