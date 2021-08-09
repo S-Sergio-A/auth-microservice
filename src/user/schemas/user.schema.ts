@@ -16,7 +16,7 @@ class User {
 
   @Prop({ required: true, index: true })
   phoneNumber: string;
-  
+
   @Prop({ required: false, index: false })
   photo: string;
 

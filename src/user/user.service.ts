@@ -32,16 +32,10 @@ import { ChangeEmailDto } from "./dto/update-email.dto";
 import { VaultDocument } from "./schemas/vault.schema";
 import { UserDocument } from "./schemas/user.schema";
 import { SignUpDto } from "./dto/sign-up.dto";
+import { UserData } from "./interfaces/user-data";
 
 const ms = require("ms");
-const cloudinary = require("cloudinary");
-
-cloudinary.config({
-  cloud_name: "gachi322",
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
-});
+const cloudinary = require("cloudinary").v2;
 
 @Injectable()
 export class UserService {
@@ -167,22 +161,7 @@ export class UserService {
     loginUserDto
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-  }): Promise<
-    | HttpStatus
-    | (JWTTokens & {
-        user: {
-          _id: string;
-          email: string;
-          username: string;
-          phoneNumber: string;
-          firstName: string;
-          lastName: string;
-          birthday: string;
-          photo: string;
-        };
-      })
-    | RpcException
-  > {
+  }): Promise<HttpStatus | (JWTTokens & UserData) | RpcException> {
     let errors: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
@@ -598,7 +577,7 @@ export class UserService {
     userId: string;
     verification: string;
     dataType: "email" | "password" | "username" | "phone";
-  }): Promise<HttpStatus | Observable<any> | RpcException> {
+  }): Promise<HttpStatus | UserData | Observable<any> | RpcException> {
     try {
       const primaryDataChangeRequestExists = await this.changePrimaryDataDocumentModel.exists({
         userId,
@@ -617,7 +596,21 @@ export class UserService {
           },
           { verified: true }
         );
-        return HttpStatus.OK;
+
+        const user = await this.userModel.findOne({ _id: userId, isActive: true });
+
+        return {
+          user: {
+            _id: user._id,
+            email: user.email,
+            username: user.username,
+            phoneNumber: user.phoneNumber,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            birthday: user.birthday,
+            photo: user.photo
+          }
+        };
       } else {
         return HttpStatus.BAD_REQUEST;
       }
@@ -635,7 +628,7 @@ export class UserService {
   }: {
     userId: string;
     optionalDataDto: AddOrUpdateOptionalDataDto;
-  }): Promise<HttpStatus | Observable<any> | RpcException> {
+  }): Promise<HttpStatus | UserData | Observable<any> | RpcException> {
     try {
       const user = await this.userModel.findOne({ _id: userId, isActive: true });
 
@@ -647,7 +640,21 @@ export class UserService {
           birthday: optionalDataDto.hasOwnProperty("birthday") ? optionalDataDto.birthday : user.birthday
         }
       );
-      return HttpStatus.CREATED;
+
+      const userData = await this.userModel.findOne({ _id: userId });
+
+      return {
+        user: {
+          _id: userData._id,
+          email: userData.email,
+          username: userData.username,
+          phoneNumber: userData.phoneNumber,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          birthday: userData.birthday,
+          photo: userData.photo
+        }
+      };
     } catch (e) {
       console.log(e.stack);
       if (e instanceof RpcException) {
@@ -656,28 +663,43 @@ export class UserService {
     }
   }
 
-  async changePhoto({ userId, photo }: { userId: string; photo: any }): Promise<HttpStatus | Observable<any> | RpcException> {
+  async changePhoto({ userId, photo }: { userId: string; photo: any }): Promise<HttpStatus | UserData | Observable<any> | RpcException> {
     try {
-      const user = await this.userModel.findOne({ _id: userId, isActive: true });
-      let resultingImageUrl;
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true
+      });
 
-      cloudinary.v2.uploader.upload(
-        photo,
-        { folder: `ChatiZZe/${user._id}/`, public_id: `photo__${new Date(Date.now().toLocaleString("Ru-ru"))}` },
-        (error, result) => {
-          if (!error && result.url) {
-            resultingImageUrl = result.secure_url;
-          }
-        }
-      );
+      const user = await this.userModel.findOne({ _id: userId, isActive: true });
+
+      const result = await cloudinary.uploader.upload(photo.photo, {
+        overwrite: true,
+        invalidate: true,
+        folder: `ChatiZZe/${user._id}/`,
+        public_id: `profile_pic`
+      });
 
       await this.userModel.updateOne(
         { _id: userId },
         {
-          photo: resultingImageUrl ? resultingImageUrl : user.photo
+          photo: result ? result.secure_url : user.photo
         }
       );
-      return HttpStatus.CREATED;
+
+      return {
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          phoneNumber: user.phoneNumber,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          birthday: user.birthday,
+          photo: result ? result.secure_url : user.photo
+        }
+      };
     } catch (e) {
       console.log(e.stack);
       if (e instanceof RpcException) {
