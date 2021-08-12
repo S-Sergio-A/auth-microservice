@@ -200,7 +200,7 @@ export class UserService {
           error.internalFailure = UserErrorCodes.NOT_ACTIVE.value;
         }
 
-        if (user.isActive && user.blockExpires > Date.now() && user.isBlocked) {
+        if (user.isActive && user.isBlocked) {
           return new RpcException({
             key: "USER_HAS_BEEN_BLOCKED",
             code: UserErrorCodes.USER_HAS_BEEN_BLOCKED.code,
@@ -327,7 +327,10 @@ export class UserService {
         { _id: Types.ObjectId(userId), email: changeEmailDto.oldEmail, isActive: true },
         {
           email: changeEmailDto.newEmail,
-          isBlocked: true
+          isBlocked: true,
+          verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          verification: changeEmailDto.verification
         }
       );
 
@@ -411,7 +414,10 @@ export class UserService {
         { _id: userId, username: changeUsernameDto.oldUsername, isActive: true },
         {
           username: changeUsernameDto.newUsername,
-          isBlocked: true
+          isBlocked: true,
+          verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          verification: changeUsernameDto.verification
         }
       );
 
@@ -467,7 +473,10 @@ export class UserService {
         { _id: userId, phoneNumber: changePhoneNumberDto.oldPhoneNumber, isActive: true },
         {
           phoneNumber: changePhoneNumberDto.newPhoneNumber,
-          isBlocked: true
+          isBlocked: true,
+          verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          verification: changePhoneNumberDto.verification
         }
       );
 
@@ -538,8 +547,9 @@ export class UserService {
         {
           password: changePasswordDto.newPassword,
           isBlocked: true,
-          verification: changePasswordDto.verification,
-          verificationExpires: ms(process.env.HOURS_TO_VERIFY)
+          verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
+          verification: changePasswordDto.verification
         }
       );
       await this.vaultModel.updateOne({ userId }, { salt });
@@ -587,7 +597,7 @@ export class UserService {
       });
 
       if (primaryDataChangeRequestExists) {
-        await this.userModel.updateOne({ userId }, { isBlocked: false });
+        await this.userModel.updateOne({ userId }, { isBlocked: false, verification: "", verificationExpires: 0, blockExpires: 0 });
         await this.changePrimaryDataDocumentModel.updateOne(
           {
             userId,
