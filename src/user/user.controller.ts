@@ -1,5 +1,5 @@
 import { MessagePattern, Payload, Transport } from "@nestjs/microservices";
-import { Controller, UseFilters } from "@nestjs/common";
+import { Controller, Get, HttpCode, HttpStatus, UseFilters } from "@nestjs/common";
 import { ExceptionFilter } from "../exceptions/filters/Exception.filter";
 import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
 import { IpAgentFingerprint, RequestInfo } from "./interfaces/request-info.interface";
@@ -14,14 +14,14 @@ import { SignUpDto } from "./dto/sign-up.dto";
 import { UserService } from "./user.service";
 
 @UseFilters(ExceptionFilter)
-@Controller("user")
+@Controller()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @MessagePattern({ cmd: "invoke" }, Transport.REDIS)
-  async invoke(): Promise<void> {
-    console.log("auth-service invoked");
-  }
+  // @MessagePattern({ cmd: "invoke" }, Transport.REDIS)
+  // async invoke(): Promise<void> {
+  //   console.log("auth-service invoked");
+  // }
 
   @MessagePattern({ cmd: "register" }, Transport.REDIS)
   async register(@Payload() createUserDto: SignUpDto) {
@@ -106,5 +106,11 @@ export class UserController {
   @MessagePattern({ cmd: "refresh-session" }, Transport.REDIS)
   async refreshSession(@Payload() data: RequestInfo) {
     return await this.userService.refreshSession(data);
+  }
+  
+  @Get("/")
+  @HttpCode(HttpStatus.OK)
+  async invoke(): Promise<void> {
+    console.log("auth-service invoked");
   }
 }
