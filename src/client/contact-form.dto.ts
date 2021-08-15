@@ -3,12 +3,6 @@ import { IsDefined, IsEmail, IsNotEmpty, IsString, Length } from "class-validato
 export class ContactFormDto {
   @IsDefined()
   @IsNotEmpty()
-  @IsString()
-  @Length(36, 36)
-  id: string;
-
-  @IsDefined()
-  @IsNotEmpty()
   @IsEmail()
   @Length(6, 254)
   readonly clientEmail: string;
