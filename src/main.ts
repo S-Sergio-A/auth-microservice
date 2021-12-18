@@ -23,8 +23,8 @@ async function startWeb() {
     exposedHeaders: ["Access-Token", "Refresh-Token", "Client-Token", "Country", "Content-Type"],
     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"]
   });
-  
-  await app.listen(process.env.PORT || 3000);
+
+  await app.listen(process.env.PORT || 3500);
 }
 
 startWeb();

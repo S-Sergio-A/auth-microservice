@@ -80,7 +80,7 @@ export class UserService {
       if (await this._isExistingPhone(userSignUpDto.phoneNumber)) {
         error.phoneNumber = ValidationErrorCodes.TEL_NUM_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(error))) {
+      if (!this._isEmpty(error)) {
         return new RpcException(error);
       }
 
@@ -100,6 +100,7 @@ export class UserService {
           });
         }
 
+        user.verification = v4();
         user.save((e) => {
           if (e) {
             console.log(e);
@@ -162,7 +163,7 @@ export class UserService {
   }: IpAgentFingerprint & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
   }): Promise<HttpStatus | (JWTTokens & UserData) | RpcException> {
-    let error: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
+    const error: Partial<(UserLoginEmailError & UserLoginUsernameError & UserLoginPhoneNumberError) & InternalFailure> = {};
     let user;
 
     try {
@@ -191,7 +192,7 @@ export class UserService {
         }
       }
 
-      if (!(await this._isEmpty(error))) {
+      if (!this._isEmpty(error)) {
         return new RpcException(error);
       }
 
@@ -233,7 +234,7 @@ export class UserService {
           error.password = ValidationErrorCodes.INVALID_PASSWORD.value;
         }
 
-        if (!(await this._isEmpty(error))) {
+        if (!this._isEmpty(error)) {
           return new RpcException(error);
         }
 
@@ -305,7 +306,7 @@ export class UserService {
       if (await this._isExistingEmail(changeEmailDto.newEmail)) {
         error.newEmail = ValidationErrorCodes.EMAIL_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(error))) {
+      if (!this._isEmpty(error)) {
         return new RpcException(error);
       }
 
@@ -323,6 +324,8 @@ export class UserService {
         });
       }
 
+      const verification = v4();
+
       await this.userModel.updateOne(
         { _id: Types.ObjectId(userId), email: changeEmailDto.oldEmail, isActive: true },
         {
@@ -330,13 +333,13 @@ export class UserService {
           isBlocked: true,
           verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
           blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
-          verification: changeEmailDto.verification
+          verification
         }
       );
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         user: Types.ObjectId(userId),
-        verification: changeEmailDto.verification,
+        verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
@@ -349,7 +352,7 @@ export class UserService {
 
       return await this.client.send(
         { cmd: "verify" },
-        { verificationCode: changeEmailDto.verification, email: changeEmailDto.newEmail, mailType: "VERIFY_EMAIL_CHANGE" }
+        { verificationCode: verification, email: changeEmailDto.newEmail, mailType: "VERIFY_EMAIL_CHANGE" }
       );
     } catch (e) {
       console.log(e.stack);
@@ -379,7 +382,7 @@ export class UserService {
       if (await this._isExistingUsername(changeUsernameDto.newUsername)) {
         error.newUsername = ValidationErrorCodes.USERNAME_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(error))) {
+      if (!this._isEmpty(error)) {
         return new RpcException(error);
       }
 
@@ -397,9 +400,11 @@ export class UserService {
         });
       }
 
+      const verification = v4();
+
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         user: Types.ObjectId(userId),
-        verification: changeUsernameDto.verification,
+        verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
@@ -417,13 +422,13 @@ export class UserService {
           isBlocked: true,
           verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
           blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
-          verification: changeUsernameDto.verification
+          verification
         }
       );
 
       return await this.client.send(
         { cmd: "verify" },
-        { verificationCode: changeUsernameDto.verification, email: user.email, mailType: "VERIFY_USERNAME_CHANGE" }
+        { verificationCode: verification, email: user.email, mailType: "VERIFY_USERNAME_CHANGE" }
       );
     } catch (e) {
       console.log(e.stack);
@@ -454,7 +459,7 @@ export class UserService {
       if (await this._isExistingEmail(changePhoneNumberDto.newPhoneNumber)) {
         error.newPhoneNumber = ValidationErrorCodes.TEL_NUM_ALREADY_EXISTS.value;
       }
-      if (!(await this._isEmpty(error))) {
+      if (!this._isEmpty(error)) {
         return new RpcException(error);
       }
 
@@ -469,6 +474,8 @@ export class UserService {
         });
       }
 
+      const verification = v4();
+
       await this.userModel.updateOne(
         { _id: userId, phoneNumber: changePhoneNumberDto.oldPhoneNumber, isActive: true },
         {
@@ -476,13 +483,13 @@ export class UserService {
           isBlocked: true,
           verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
           blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
-          verification: changePhoneNumberDto.verification
+          verification
         }
       );
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         user: Types.ObjectId(userId),
-        verification: changePhoneNumberDto.verification,
+        verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
@@ -495,7 +502,7 @@ export class UserService {
 
       return await this.client.send(
         { cmd: "verify" },
-        { verificationCode: changePhoneNumberDto.verification, email: user.email, mailType: "VERIFY_PHONE_CHANGE" }
+        { verificationCode: verification, email: user.email, mailType: "VERIFY_PHONE_CHANGE" }
       );
     } catch (e) {
       console.log(e.stack);
@@ -526,7 +533,7 @@ export class UserService {
       } else if (!(await this._validatePasswordUniqueness(changePasswordDto.newPassword))) {
         error.newPassword = ValidationErrorCodes.INVALID_PASSWORD.value;
       }
-      if (!(await this._isEmpty(error))) {
+      if (!this._isEmpty(error)) {
         return new RpcException(error);
       }
 
@@ -541,6 +548,7 @@ export class UserService {
       }
 
       const salt = crypto.randomBytes(10).toString("hex");
+      const verification = v4();
       changePasswordDto.newPassword = await this._generatePassword(changePasswordDto.newPassword, salt);
       await this.userModel.updateOne(
         { _id: userId },
@@ -549,14 +557,14 @@ export class UserService {
           isBlocked: true,
           verificationExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
           blockExpires: Date.now() + ms(process.env.HOURS_TO_VERIFY),
-          verification: changePasswordDto.verification
+          verification
         }
       );
       await this.vaultModel.updateOne({ userId }, { salt });
 
       const changePrimaryDataRequest = new this.changePrimaryDataDocumentModel({
         user: userId,
-        verification: changePasswordDto.verification,
+        verification,
         expires: ms(process.env.HOURS_TO_VERIFY),
         ipOfRequest: ip,
         browserOfRequest: userAgent,
@@ -569,7 +577,7 @@ export class UserService {
 
       return await this.client.send(
         { cmd: "verify" },
-        { verificationCode: changePasswordDto.verification, email: user.email, mailType: "VERIFY_PASSWORD_CHANGE" }
+        { verificationCode: verification, email: user.email, mailType: "VERIFY_PASSWORD_CHANGE" }
       );
     } catch (e) {
       console.log(e.stack);
@@ -911,9 +919,9 @@ export class UserService {
     }
   }
 
-  private async _isEmpty(obj): Promise<boolean | string> {
-    if (obj !== undefined && obj !== null) {
-      let isString = typeof obj === "string" || obj instanceof String;
+  private _isEmpty(obj): boolean | string {
+    if (obj) {
+      const isString = typeof obj === "string" || obj instanceof String;
       if ((typeof obj === "number" || obj instanceof Number) && obj !== 0) {
         return false;
       }
