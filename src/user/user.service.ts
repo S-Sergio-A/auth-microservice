@@ -15,10 +15,10 @@ import { UserLoginEmailError, UserLoginPhoneNumberError, UserLoginUsernameError 
 import { LoginByEmailDto, LoginByPhoneNumberDto, LoginByUsernameDto } from "./dto/login.dto";
 import { IpAgentFingerprint, RequestInfo } from "./interfaces/request-info.interface";
 import { AddOrUpdateOptionalDataDto } from "./dto/add-or-update-optional-data.dto";
-import { ChangePrimaryDataDocument } from "./schemas/change-primary-data.schema";
+import { ChangePrimaryDataDocument } from "../modules/schemas/change-primary-data.schema";
 import { PasswordChangeError } from "./interfaces/change-password.interface";
 import { UsernameChangeError } from "./interfaces/change-username.interface";
-import { ForgotPasswordDocument } from "./schemas/forgot-password.schema";
+import { ForgotPasswordDocument } from "../modules/schemas/forgot-password.schema";
 import { InternalFailure } from "./interfaces/internal-failure.interface";
 import { VerifyPasswordResetDto } from "./dto/verify-password-reset.dto";
 import { EmailChangeError } from "./interfaces/change-email.interface";
@@ -29,8 +29,8 @@ import { ChangePhoneNumberDto } from "./dto/update-phone.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ChangeUsernameDto } from "./dto/update-username.dto";
 import { ChangeEmailDto } from "./dto/update-email.dto";
-import { VaultDocument } from "./schemas/vault.schema";
-import { UserDocument } from "./schemas/user.schema";
+import { VaultDocument } from "../modules/schemas/vault.schema";
+import { UserDocument } from "../modules/schemas/user.schema";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { UserData } from "./interfaces/user-data";
 

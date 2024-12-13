@@ -7,7 +7,7 @@ import { TokenErrorCodes } from "../exceptions/errorCodes/TokenErrorCodes";
 import { RequestInfo } from "../user/interfaces/request-info.interface";
 import { ClientJWTData, JWTTokens } from "./interfaces/jwt-token.interface";
 import { SessionData } from "./interfaces/session-data.interface";
-import { RefreshSessionDocument } from "./refreshSession.schema";
+import { RefreshSessionDocument } from "../modules/schemas/refreshSession.schema";
 import { RefreshSessionDto } from "./refreshSession.dto";
 
 const jwt = require("jsonwebtoken");

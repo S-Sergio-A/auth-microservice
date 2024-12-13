@@ -1,10 +1,10 @@
 import { MongooseModule } from "@nestjs/mongoose";
 import { Module } from "@nestjs/common";
 import { TokenModule } from "../token/token.module";
-import { ChangePrimaryDataSchema } from "./schemas/change-primary-data.schema";
-import { ForgotPasswordSchema } from "./schemas/forgot-password.schema";
-import { VaultSchema } from "./schemas/vault.schema";
-import { UserSchema } from "./schemas/user.schema";
+import { ChangePrimaryDataSchema } from "../modules/schemas/change-primary-data.schema";
+import { ForgotPasswordSchema } from "../modules/schemas/forgot-password.schema";
+import { VaultSchema } from "../modules/schemas/vault.schema";
+import { UserSchema } from "../modules/schemas/user.schema";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
 

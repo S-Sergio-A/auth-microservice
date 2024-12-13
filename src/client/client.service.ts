@@ -7,8 +7,8 @@ import { v4 } from "uuid";
 import { IpAgentFingerprint } from "../user/interfaces/request-info.interface";
 import { GlobalErrorCodes } from "../exceptions/errorCodes/GlobalErrorCodes";
 import { TokenService } from "../token/token.service";
-import { ClientSessionDocument } from "./schemas/client-session.schema";
-import { ContactFormDocument } from "./schemas/contact-form.schema";
+import { ClientSessionDocument } from "~/modules/schemas/client-session.schema";
+import { ContactFormDocument } from "~/modules/schemas/contact-form.schema";
 import { ContactFormDto } from "./contact-form.dto";
 
 @Injectable()

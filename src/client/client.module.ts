@@ -1,8 +1,8 @@
 import { MongooseModule } from "@nestjs/mongoose";
 import { Module } from "@nestjs/common";
 import { TokenModule } from "../token/token.module";
-import { ClientSessionSchema } from "./schemas/client-session.schema";
-import { ContactFormSchema } from "./schemas/contact-form.schema";
+import { ClientSessionSchema } from "~/modules/schemas/client-session.schema";
+import { ContactFormSchema } from "~/modules/schemas/contact-form.schema";
 import { ClientController } from "./client.controller";
 import { ClientService } from "./client.service";
 
