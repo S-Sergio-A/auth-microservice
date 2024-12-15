@@ -3,7 +3,8 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { RabbitConfigInterface } from "@ssmovzh/chatterly-common-utils";
 import * as amqp from "amqplib";
 import { RabbitConsumerManagerService } from "~/modules/rabbit/rabbit-manager.service";
-import { RoomsModule } from "~/modules/rooms";
+import { ClientModule } from "~/modules/client/client.module";
+import { UserModule } from "~/modules/user/user.module";
 
 const RABBITMQ_CONNECTION = "RABBITMQ_CONNECTION";
 const RABBITMQ_CHANNEL = "RABBITMQ_CHANNEL";
@@ -28,7 +29,8 @@ const rabbitMQProviders: Provider[] = [
 
 @Global()
 @Module({
-  imports: [ConfigModule, RoomsModule],
-  providers: [...rabbitMQProviders, RabbitConsumerManagerService]
+  imports: [ConfigModule, ClientModule, UserModule],
+  providers: [...rabbitMQProviders, RabbitConsumerManagerService],
+  exports: [...rabbitMQProviders, RabbitConsumerManagerService]
 })
 export class RabbitModule {}

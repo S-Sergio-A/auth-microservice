@@ -1,11 +1,11 @@
 import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { RabbitConfigInterface } from "@ssmovzh/chatterly-common-utils";
+import { LoggerService, RabbitConfigInterface } from "@ssmovzh/chatterly-common-utils";
 import { Channel, connect, ConsumeMessage, Message } from "amqplib";
 import { from, Subject, Subscription } from "rxjs";
 import { mergeMap } from "rxjs/operators";
-import { LoggerService } from "~/modules/common";
-import { Executor } from "~/modules/rooms";
+import { UserExecutor as ExecutorUser } from "~/modules/user/user-executor.service";
+import { ClientExecutor as ExecutorClient } from "~/modules/client/client-executor.service";
 
 @Injectable()
 export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
@@ -17,7 +17,7 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject("RABBITMQ_CHANNEL") private channel: Channel,
-    private readonly executor: Executor,
+    private readonly executor: ExecutorUser | ExecutorClient,
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
     @Inject("RABBITMQ_QUEUE_NAME") queueName: string
