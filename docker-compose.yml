@@ -1,16 +1,54 @@
-version: '3'
-name: public-api
+version: '3.8'
 services:
+  public-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Heroku-related environment variables
+      ENVIRONMENT: production
+      NODE_ENV: production
+      PORT: 3000
+      # Client URL
+      CLIENT_URL: ${CLIENT_URL}
+      # RabbitMQ (Heroku plugin)
+      RABBIT_HOST: ${RABBIT_HOST}
+      RABBIT_PORT: ${RABBIT_PORT}
+      RABBIT_USERNAME: ${RABBIT_USERNAME}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      # MongoDB
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_CLUSTER_URL: ${MONGO_CLUSTER_URL}
+      # Cloudinary
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      # Token configuration
+      JWT_SECRET: ${JWT_SECRET}
+      CLIENTS_JWT_SECRET: ${CLIENTS_JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRATION_TIME: ${JWT_EXPIRATION_TIME}
+      JWT_REFRESH_EXPIRATION_TIME: ${JWT_REFRESH_EXPIRATION_TIME}
+      JWT_EXPIRATION_TIME_LONG: ${JWT_EXPIRATION_TIME_LONG}
+      # Protection
+      MAX_REFRESH_SESSIONS_COUNT: ${MAX_REFRESH_SESSIONS_COUNT}
+      MAX_PASSWORD_ATTEMPTS: ${MAX_PASSWORD_ATTEMPTS}
+      HOURS_TO_VERIFY: ${HOURS_TO_VERIFY}
+      HOURS_TO_BLOCK: ${HOURS_TO_BLOCK}
+      LOGIN_ATTEMPTS_TO_BLOCK: ${LOGIN_ATTEMPTS_TO_BLOCK}
+    depends_on:
+      - rabbitmq
   rabbitmq:
-    image: rabbitmq:3.10.7-management
+    image: rabbitmq:3-management
     hostname: rabbitmq
     restart: always
     environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=admin
-      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit disk_free_limit 2147483648
-    volumes:
-      - ./rabbitmq:/var/lib/rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit disk_free_limit 2147483648
     ports:
-      - 15672:15672
-      - 5672:5672
+      - "5672:5672"
+      - "15672:15672"
