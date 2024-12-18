@@ -1,8 +1,8 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, InternalServerErrorException } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Observable } from "rxjs";
 import { Model, Types } from "mongoose";
-import crypto from "crypto";
+import { randomBytes } from "crypto";
 import { argon2id, hash, verify } from "argon2";
 import { v4 } from "uuid";
 import ms from "ms";
@@ -13,7 +13,6 @@ import { SignUpDto } from "./dto/sign-up.dto";
 import {
   ChangePrimaryData,
   CloudinaryConfigInterface,
-  ConnectionNamesEnum,
   EmailTypeEnum,
   ForgotPassword,
   GLOBAL_ERROR_CODES,
@@ -26,7 +25,6 @@ import {
   User,
   USER_ERROR_CODES,
   UserErrorCodesEnum,
-  UserSignUpErrorInterface,
   VALIDATION_ERROR_CODES,
   ValidationConfigInterface,
   ValidationErrorCodesEnum,
@@ -50,12 +48,28 @@ export class UserService {
   private readonly TOKEN_CONFIG: TokenConfigInterface;
   private readonly VALIDATION_CONFIG: ValidationConfigInterface;
   private readonly CLOUDINARY_CONFIG: CloudinaryConfigInterface;
+  private readonly PROJECTION = {
+    email: 1,
+    phoneNumber: 1,
+    username: 1,
+    _id: 1,
+    photo: 1,
+    firstName: 1,
+    lastName: 1,
+    birthday: 1,
+    verification: 1,
+    isActive: 1,
+    isBlocked: 1,
+    blockExpires: 1,
+    verificationExpires: 1,
+    loginAttempts: 1
+  };
 
   constructor(
-    @InjectModel(ModelsNamesEnum.USERS, ConnectionNamesEnum.USERS) private readonly userModel: Model<User>,
-    @InjectModel(ModelsNamesEnum.VAULT, ConnectionNamesEnum.USERS) private readonly vaultModel: Model<Vault>,
-    @InjectModel(ModelsNamesEnum.FORGOT_PASSWORD, ConnectionNamesEnum.USERS) private readonly forgotPasswordModel: Model<ForgotPassword>,
-    @InjectModel(ModelsNamesEnum.CHANGE_PRIMARY_DATA, ConnectionNamesEnum.USERS)
+    @InjectModel(ModelsNamesEnum.USERS) private readonly userModel: Model<User>,
+    @InjectModel(ModelsNamesEnum.VAULTS) private readonly vaultModel: Model<Vault>,
+    @InjectModel(ModelsNamesEnum.FORGOT_PASSWORDS) private readonly forgotPasswordModel: Model<ForgotPassword>,
+    @InjectModel(ModelsNamesEnum.CHANGE_PRIMARY_DATA)
     private readonly changePrimaryDataModel: Model<ChangePrimaryData>,
     private readonly authService: TokenService,
     private readonly logger: LoggerService,
@@ -69,9 +83,7 @@ export class UserService {
 
   private counter = 0;
 
-  async register(userSignUpDto: SignUpDto): Promise<void> {
-    const error: Partial<UserSignUpErrorInterface> = {};
-
+  async register(userSignUpDto: SignUpDto): Promise<Omit<User, "password">> {
     if (await this._isExistingEmail(userSignUpDto.email)) {
       const { httpCode, msg } = USER_ERROR_CODES.get(UserErrorCodesEnum.EMAIL_ALREADY_EXISTS);
       this.logger.error(msg);
@@ -120,14 +132,10 @@ export class UserService {
         httpCode
       );
     }
-    if (!Object.keys(error).length) {
-      this.logger.error(`Error: ${JSON.stringify(error)}`);
-      throw new BadRequestException(JSON.stringify(error));
-    }
 
     if (userSignUpDto.password === userSignUpDto.passwordVerification) {
       delete userSignUpDto.passwordVerification;
-      const salt = crypto.randomBytes(10).toString("hex");
+      const salt = randomBytes(10).toString("hex");
       userSignUpDto.password = await this._generatePassword(userSignUpDto.password, salt);
 
       const user = new this.userModel(userSignUpDto);
@@ -144,16 +152,23 @@ export class UserService {
       }
 
       user.verification = v4();
+      user.isActive = true;
+      user.isBlocked = false;
+      user.loginAttempts = 0;
       await user.save();
       await vault.save();
 
       await this.messagePublisherService.publishMessage(RabbitQueuesEnum.ADD_WELCOME_CHAT, { user: user._id });
 
-      await this.messagePublisherService.publishMessage(RabbitQueuesEnum.VERIFY_ACCOUNT_UPDATE, {
+      await this.messagePublisherService.publishMessage(RabbitQueuesEnum.VERIFY_EMAIL, {
         verificationCode: user.verification,
         email: user.email,
         mailType: EmailTypeEnum.VERIFY_EMAIL
       });
+
+      delete user.password;
+
+      return user;
     }
   }
 
@@ -194,7 +209,7 @@ export class UserService {
     loginUserDto
   }: IpAgentFingerprintInterface & {
     loginUserDto: { rememberMe: boolean } & LoginByEmailDto & LoginByUsernameDto & LoginByPhoneNumberDto;
-  }): Promise<TokenInterface & UserDataInterface> {
+  }): Promise<UserDataInterface> {
     let user: User;
 
     const sessionData = {
@@ -206,7 +221,7 @@ export class UserService {
     };
 
     if (loginUserDto.username) {
-      user = await this.userModel.findOne({ username: loginUserDto.username });
+      user = await this.userModel.findOne({ username: loginUserDto.username }, { ...this.PROJECTION });
       if (!user) {
         const { httpCode, msg } = VALIDATION_ERROR_CODES.get(ValidationErrorCodesEnum.INVALID_USERNAME);
         this.logger.error(msg);
@@ -220,7 +235,7 @@ export class UserService {
         );
       }
     } else if (loginUserDto.phoneNumber) {
-      user = await this.userModel.findOne({ phoneNumber: loginUserDto.phoneNumber });
+      user = await this.userModel.findOne({ phoneNumber: loginUserDto.phoneNumber }, { ...this.PROJECTION });
       if (!user) {
         const { httpCode, msg } = VALIDATION_ERROR_CODES.get(ValidationErrorCodesEnum.INVALID_TEL_NUM);
         this.logger.error(msg);
@@ -330,6 +345,7 @@ export class UserService {
     }
     user.loginAttempts = 0;
     await user.save();
+    delete user.password;
 
     return {
       user,
@@ -390,7 +406,7 @@ export class UserService {
       );
     }
 
-    const userRecord = await this.userModel.findOne({ _id: userId, isActive: true });
+    const userRecord = await this.userModel.findOne({ _id: userId, isActive: true }, { ...this.PROJECTION });
     const userChangeRequests = await this.changePrimaryDataModel.countDocuments({
       user: new Types.ObjectId(userId),
       verified: false
@@ -489,7 +505,13 @@ export class UserService {
       );
     }
 
-    const user = await this.userModel.findOne({ _id: new Types.ObjectId(userId), isActive: true });
+    const user = await this.userModel.findOne(
+      {
+        _id: new Types.ObjectId(userId),
+        isActive: true
+      },
+      { ...this.PROJECTION }
+    );
     const userChangeRequests = await this.changePrimaryDataModel.countDocuments({
       user: new Types.ObjectId(userId),
       verified: false
@@ -588,7 +610,7 @@ export class UserService {
       );
     }
 
-    const user = await this.userModel.findOne({ _id: userId, isActive: true });
+    const user = await this.userModel.findOne({ _id: userId, isActive: true }, { ...this.PROJECTION });
     const userChangeRequests = await this.changePrimaryDataModel.countDocuments({ userId, verified: false });
 
     if (user.isBlocked || userChangeRequests !== 0) {
@@ -657,7 +679,7 @@ export class UserService {
     userId: string;
     changePasswordDto: ChangePasswordDto;
   }): Promise<void> {
-    const user = await this.userModel.findOne({ _id: userId, isActive: true });
+    const user = await this.userModel.findOne({ _id: userId, isActive: true }, { ...this.PROJECTION });
     const { salt: oldSalt } = await this.vaultModel.findOne({ userId });
 
     if (!(await verify(user.password, oldSalt + changePasswordDto.oldPassword))) {
@@ -700,7 +722,7 @@ export class UserService {
     }
 
     try {
-      const salt = crypto.randomBytes(10).toString("hex");
+      const salt = randomBytes(10).toString("hex");
       const verification = v4();
       changePasswordDto.newPassword = await this._generatePassword(changePasswordDto.newPassword, salt);
       await this.userModel.updateOne(
@@ -752,7 +774,7 @@ export class UserService {
     userId: string;
     verification: string;
     dataType: "email" | "password" | "username" | "phone";
-  }): Promise<User> {
+  }): Promise<Omit<User, "password">> {
     try {
       const primaryDataChangeRequestExists = await this.changePrimaryDataModel.exists({
         userId,
@@ -783,7 +805,7 @@ export class UserService {
         { verified: true }
       );
 
-      return await this.userModel.findOne({ _id: userId, isActive: true });
+      return await this.userModel.findOne({ _id: userId, isActive: true }, { ...this.PROJECTION });
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -801,9 +823,9 @@ export class UserService {
   }: {
     userId: string;
     optionalDataDto: AddOrUpdateOptionalDataDto;
-  }): Promise<User> {
+  }): Promise<Omit<User, "password">> {
     try {
-      const user = await this.userModel.findOne({ _id: userId, isActive: true });
+      const user = await this.userModel.findOne({ _id: userId, isActive: true }, { ...this.PROJECTION });
 
       await this.userModel.updateOne(
         { _id: userId },
@@ -814,7 +836,7 @@ export class UserService {
         }
       );
 
-      return await this.userModel.findOne({ _id: userId });
+      return await this.userModel.findOne({ _id: userId }, { ...this.PROJECTION });
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -826,7 +848,7 @@ export class UserService {
     }
   }
 
-  async changePhoto({ userId, photo }: { userId: string; photo: any }): Promise<User> {
+  async changePhoto({ userId, photo }: { userId: string; photo: string }): Promise<Omit<User, "password">> {
     try {
       v2.config({
         cloud_name: this.CLOUDINARY_CONFIG.cloudName,
@@ -835,9 +857,9 @@ export class UserService {
         secure: true
       });
 
-      const user = await this.userModel.findOne({ _id: userId, isActive: true });
+      const user = await this.userModel.findOne({ _id: userId, isActive: true }, { ...this.PROJECTION });
 
-      const result = await v2.uploader.upload(photo.photo, {
+      const result = await v2.uploader.upload(photo, {
         overwrite: true,
         invalidate: true,
         folder: `Chatterly/${user._id}/`,
@@ -851,7 +873,7 @@ export class UserService {
         }
       );
 
-      return await this.userModel.findOne({ _id: userId });
+      return await this.userModel.findOne({ _id: userId }, { ...this.PROJECTION });
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -964,9 +986,9 @@ export class UserService {
     try {
       delete verifyUuidDto.newPasswordVerification;
 
-      const user = await this.userModel.findOne({ email });
+      const user = await this.userModel.findOne({ email }, { ...this.PROJECTION });
 
-      const salt = crypto.randomBytes(10).toString("hex");
+      const salt = randomBytes(10).toString("hex");
       const newPassword = await this._generatePassword(verifyUuidDto.newPassword, salt);
       await this.userModel.updateOne({ _id: user._id }, { password: newPassword });
       await this.vaultModel.updateOne({ user: user._id }, { salt });
@@ -981,9 +1003,9 @@ export class UserService {
     }
   }
 
-  async findById(userId: string): Promise<User> {
+  async findById(userId: string): Promise<Omit<User, "password">> {
     try {
-      return this.userModel.findOne({ _id: userId });
+      return this.userModel.findOne({ _id: userId }, { ...this.PROJECTION });
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -998,7 +1020,7 @@ export class UserService {
   private async _isExistingEmail(email: string): Promise<boolean> {
     try {
       const exists = await this.userModel.exists({ email });
-      return !!exists._id;
+      return !!exists?._id;
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -1013,7 +1035,7 @@ export class UserService {
   private async _isExistingUsername(username: string): Promise<boolean> {
     try {
       const exists = await this.userModel.exists({ username });
-      return !!exists._id;
+      return !!exists?._id;
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -1028,7 +1050,7 @@ export class UserService {
   private async _isExistingPhone(phoneNumber: string): Promise<boolean> {
     try {
       const exists = await this.userModel.exists({ phoneNumber });
-      return !!exists._id;
+      return !!exists?._id;
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -1043,7 +1065,7 @@ export class UserService {
   private async _isExistingPassword(password: string): Promise<boolean> {
     try {
       const exists = await this.userModel.exists({ password });
-      return !!exists._id;
+      return !!exists?._id;
     } catch (error) {
       this.logger.error(error, error.trace);
       const { httpCode, msg } = GLOBAL_ERROR_CODES.get(GlobalErrorCodesEnum.INTERNAL_SERVER_ERROR);
@@ -1057,7 +1079,7 @@ export class UserService {
 
   private async _validatePasswordUniqueness(password: string): Promise<boolean> {
     try {
-      const salt = crypto.randomBytes(10).toString("hex");
+      const salt = randomBytes(10).toString("hex");
       const saltedPassword = await this._generatePassword(password, salt);
 
       if (this.counter <= this.VALIDATION_CONFIG.maxPasswordAttempts) {
@@ -1086,7 +1108,7 @@ export class UserService {
     try {
       password = salt + password;
 
-      return await hash(password, {
+      return hash(password, {
         hashLength: 40,
         memoryCost: 8192,
         timeCost: 4,

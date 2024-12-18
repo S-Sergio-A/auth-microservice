@@ -18,8 +18,8 @@ import { IpAgentFingerprintInterface } from "~/modules/user/interfaces";
 @Injectable()
 export class ClientService {
   constructor(
-    @InjectModel(ModelsNamesEnum.CONTACT_FORMS, ConnectionNamesEnum.USERS) private readonly contactFormModel: Model<ContactForm>,
-    @InjectModel(ModelsNamesEnum.CLIENT_SESSIONS, ConnectionNamesEnum.CLIENTS) private readonly clientSessionModel: Model<ClientSession>,
+    @InjectModel(ModelsNamesEnum.CONTACT_FORMS) private readonly contactFormModel: Model<ContactForm>,
+    @InjectModel(ModelsNamesEnum.CLIENT_SESSIONS) private readonly clientSessionModel: Model<ClientSession>,
     private readonly authService: TokenService,
     private readonly logger: LoggerService
   ) {}

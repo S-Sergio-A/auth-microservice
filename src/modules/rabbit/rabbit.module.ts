@@ -5,9 +5,9 @@ import * as amqp from "amqplib";
 import { RabbitConsumerManagerService } from "~/modules/rabbit/rabbit-manager.service";
 import { ClientModule } from "~/modules/client/client.module";
 import { UserModule } from "~/modules/user/user.module";
+import { RabbitService } from "~/modules/rabbit/rabbit.service";
 
 const RABBITMQ_CONNECTION = "RABBITMQ_CONNECTION";
-const RABBITMQ_CHANNEL = "RABBITMQ_CHANNEL";
 
 const rabbitMQProviders: Provider[] = [
   {
@@ -17,20 +17,13 @@ const rabbitMQProviders: Provider[] = [
       return await amqp.connect(rabbitmqConfig);
     },
     inject: [ConfigService]
-  },
-  {
-    provide: RABBITMQ_CHANNEL,
-    useFactory: async (connection: amqp.Connection) => {
-      return await connection.createChannel();
-    },
-    inject: [RABBITMQ_CONNECTION]
   }
 ];
 
 @Global()
 @Module({
   imports: [ConfigModule, ClientModule, UserModule],
-  providers: [...rabbitMQProviders, RabbitConsumerManagerService],
-  exports: [...rabbitMQProviders, RabbitConsumerManagerService]
+  providers: [...rabbitMQProviders, RabbitConsumerManagerService, RabbitService],
+  exports: [...rabbitMQProviders, RabbitConsumerManagerService, RabbitService]
 })
 export class RabbitModule {}

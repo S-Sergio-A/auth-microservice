@@ -2,7 +2,7 @@ import * as process from "process";
 import * as dotenv from "dotenv";
 import {
   AppConfigInterface,
-  CloudinaryConfigInterface,
+  CloudinaryConfigInterface, MongoConfigInterface,
   RabbitConfigInterface,
   TokenConfigInterface,
   ValidationConfigInterface
@@ -20,7 +20,7 @@ export default () => ({
     username: process.env.MONGO_USERNAME,
     password: process.env.MONGO_PASSWORD,
     clusterUrl: process.env.MONGO_CLUSTER_URL
-  },
+  } as MongoConfigInterface,
   rabbitConfig: {
     protocol: "amqp",
     hostname: process.env.RABBIT_HOST,

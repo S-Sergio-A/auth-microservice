@@ -28,7 +28,7 @@ export class TokenService {
   private readonly VALIDATION_CONFIG: ValidationConfigInterface;
 
   constructor(
-    @InjectModel(ModelsNamesEnum.REFRESH_SESSION, ConnectionNamesEnum.USERS) private readonly refreshSessionModel: Model<RefreshSession>,
+    @InjectModel(ModelsNamesEnum.REFRESH_SESSIONS) private readonly refreshSessionModel: Model<RefreshSession>,
     private readonly logger: LoggerService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService

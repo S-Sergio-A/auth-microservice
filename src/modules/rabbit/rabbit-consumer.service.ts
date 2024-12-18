@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { LoggerService, RabbitConfigInterface } from "@ssmovzh/chatterly-common-utils";
-import { Channel, connect, ConsumeMessage, Message } from "amqplib";
+import { Channel, connect, Connection, ConsumeMessage, Message } from "amqplib";
 import { from, Subject, Subscription } from "rxjs";
 import { mergeMap } from "rxjs/operators";
 import { UserExecutor as ExecutorUser } from "~/modules/user/user-executor.service";
@@ -14,9 +14,10 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly messageQueue = new Subject<Message>();
   private readonly concurrency = 100;
   private readonly queueName: string;
+  private connection: Connection | null = null;
 
   constructor(
-    @Inject("RABBITMQ_CHANNEL") private channel: Channel,
+    private channel: Channel,
     private readonly executor: ExecutorUser | ExecutorClient,
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
@@ -26,19 +27,7 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
     this.logger.setContext(RabbitConsumerService.name);
     this.rabbitConfig = configService.get<RabbitConfigInterface>("rabbitConfig");
 
-    this.channel.on("error", async (err) => {
-      this.logger.error(`RabbitMQ Channel Error: ${err.message}.`, err.stack);
-    });
-    this.channel.on("close", async () => {
-      this.logger.warn("RabbitMQ Channel Closed. Attempting to recreate...");
-      await this._recreateChannel();
-    });
-    this.channel.on("return", (msg) => {
-      this.logger.warn(`Message returned from RabbitMQ: ${msg.content.toString()}.`);
-    });
-    this.channel.on("drain", () => {
-      this.logger.debug("RabbitMQ Channel drained.");
-    });
+    this._attachChannelListeners();
   }
 
   async onModuleInit(): Promise<void> {
@@ -51,11 +40,52 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy(): void {
     // Gracefully close Subject
+    this._detachChannelListeners();
     this.messageQueue.complete();
     // Clean up RxJS pipeline
     this.subscription?.unsubscribe();
+
+    if (this.channel) {
+      this.channel.close().catch((err) => this.logger.error("Failed to close channel:", err.message));
+    }
+
+    if (this.connection) {
+      this.connection.close().catch((err) => this.logger.error("Failed to close connection:", err.message));
+    }
+
     this.logger.verbose(`RabbitMQ consumer completed and unsubscribed from ${this.queueName}, RxJS subscription closed.`);
   }
+
+  protected _attachChannelListeners(): void {
+    this.channel.on("error", this._onChannelError);
+    this.channel.on("close", this._onChannelClose);
+    this.channel.on("return", this._onChannelReturn);
+    this.channel.on("drain", this._onChannelDrain);
+  }
+
+  protected _detachChannelListeners(): void {
+    this.channel.removeListener("error", this._onChannelError);
+    this.channel.removeListener("close", this._onChannelClose);
+    this.channel.removeListener("return", this._onChannelReturn);
+    this.channel.removeListener("drain", this._onChannelDrain);
+  }
+
+  private _onChannelError = (err: Error): void => {
+    this.logger.error(`RabbitMQ Channel Error: ${err.message}`, err.stack);
+  };
+
+  private _onChannelClose = async (): Promise<void> => {
+    this.logger.warn("RabbitMQ Channel Closed. Attempting to recreate...");
+    await this._recreateChannel();
+  };
+
+  private _onChannelReturn = (msg: Message): void => {
+    this.logger.warn(`Message returned from RabbitMQ: ${msg.content.toString()}.`);
+  };
+
+  private _onChannelDrain = (): void => {
+    this.logger.debug("RabbitMQ Channel drained.");
+  };
 
   protected async _initializeQueueAndConsume(): Promise<void> {
     try {
@@ -105,7 +135,13 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
     try {
       const messageContent = msg.content.toString();
 
-      await this._processMessageLogic(messageContent);
+      const result = await this._processMessageLogic(messageContent);
+
+      if (msg.properties.replyTo) {
+        this.channel.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(result)), {
+          correlationId: msg.properties.correlationId
+        });
+      }
 
       this.logger.verbose(`Message acknowledged: ${messageContent}.`);
       this.channel.ack(msg);
@@ -119,7 +155,7 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
   protected async _processMessageLogic(messageContent: string): Promise<void> {
     this.logger.debug(`_processMessageLogic: queue -> ${this.queueName}, Message -> ${messageContent}.`);
 
-    await this.executor.handleMessage(messageContent);
+    return await this.executor.handleMessage(messageContent);
   }
 
   protected async _recreateChannel(): Promise<void> {

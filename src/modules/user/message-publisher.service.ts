@@ -35,7 +35,7 @@ export class MessagePublisherService {
       }
       this.logger.debug(`Queue name: ${queueName}); Pushing ${JSON.stringify(data)} to queue`);
 
-      await this.rabbitService.sendMessage(queueName, data);
+      return this.rabbitService.sendMessage(queueName, data);
     } catch (error) {
       this.logger.error(error, error.trace);
     }

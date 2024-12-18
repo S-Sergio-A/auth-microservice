@@ -16,7 +16,7 @@ export class UserHandlers {
     this.handlers.set(RabbitQueuesEnum.CHANGE_EMAIL, this.userService.changeEmail.bind(this.userService));
     this.handlers.set(RabbitQueuesEnum.CHANGE_USERNAME, this.userService.changeUsername.bind(this.userService));
     this.handlers.set(RabbitQueuesEnum.CHANGE_PASSWORD, this.userService.changePassword.bind(this.userService));
-    this.handlers.set(RabbitQueuesEnum.CHANGE_PHOTO, this.userService.changePhoneNumber.bind(this.userService));
+    this.handlers.set(RabbitQueuesEnum.CHANGE_TEL, this.userService.changePhoneNumber.bind(this.userService));
     this.handlers.set(RabbitQueuesEnum.VERIFY_ACCOUNT_UPDATE, this.userService.verifyPrimaryDataChange.bind(this.userService));
     this.handlers.set(RabbitQueuesEnum.CHANGE_DETAILS, this.userService.addOrChangeOptionalData.bind(this.userService));
     this.handlers.set(RabbitQueuesEnum.CHANGE_PHOTO, this.userService.changePhoto.bind(this.userService));

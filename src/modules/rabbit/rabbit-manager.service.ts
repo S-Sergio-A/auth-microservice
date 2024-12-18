@@ -1,21 +1,21 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { LoggerService, RabbitQueuesEnum } from "@ssmovzh/chatterly-common-utils";
-import { Channel } from "amqplib";
 import { RabbitConsumerService } from "~/modules/rabbit/rabbit-consumer.service";
 import { UserExecutor } from "~/modules/user/user-executor.service";
 import { ClientExecutor } from "~/modules/client/client-executor.service";
+import { RabbitService } from "~/modules/rabbit/rabbit.service";
 
 @Injectable()
 export class RabbitConsumerManagerService implements OnModuleInit, OnModuleDestroy {
   private consumers: RabbitConsumerService[];
 
   constructor(
-    @Inject("RABBITMQ_CHANNEL") private channel: Channel,
     private readonly userExecutor: UserExecutor,
     private readonly clientExecutor: ClientExecutor,
     private readonly logger: LoggerService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly rabbitService: RabbitService
   ) {}
 
   async onModuleInit() {
@@ -38,19 +38,25 @@ export class RabbitConsumerManagerService implements OnModuleInit, OnModuleDestr
       RabbitQueuesEnum.REFRESH_SESSION
     ];
 
-    this.consumers = clientQueueNames.map((queueName) => {
-      const loggerInstance = this.logger.clone();
+    this.consumers = await Promise.all(
+      clientQueueNames.map(async (queueName) => {
+        const loggerInstance = this.logger.clone();
+        const channel = await this.rabbitService.createChannel();
 
-      return new RabbitConsumerService(this.channel, this.clientExecutor, loggerInstance, this.configService, queueName);
-    });
+        return new RabbitConsumerService(channel, this.clientExecutor, loggerInstance, this.configService, queueName);
+      })
+    );
 
     this.consumers = [
       ...this.consumers,
-      ...userQueueNames.map((queueName) => {
-        const loggerInstance = this.logger.clone();
+      ...(await Promise.all(
+        userQueueNames.map(async (queueName) => {
+          const loggerInstance = this.logger.clone();
+          const channel = await this.rabbitService.createChannel();
 
-        return new RabbitConsumerService(this.channel, this.userExecutor, loggerInstance, this.configService, queueName);
-      })
+          return new RabbitConsumerService(channel, this.userExecutor, loggerInstance, this.configService, queueName);
+        })
+      ))
     ];
 
     await Promise.all(this.consumers.map((consumer) => consumer.onModuleInit()));

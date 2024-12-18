@@ -11,7 +11,7 @@ export class ClientExecutor {
     this.logger.setContext(ClientExecutor.name);
   }
 
-  async handleMessage(message: string): Promise<void> {
+  async handleMessage(message: string): Promise<any> {
     let data: any;
 
     try {
@@ -26,9 +26,9 @@ export class ClientExecutor {
     if (!handler) return;
 
     try {
-      await handler(data);
+      const response = await handler(data);
       this.logger.verbose(`Message processed successfully.`);
-      return;
+      return response;
     } catch (error) {
       this.logger.error(`Error: ${error}`, error.trace);
     }
