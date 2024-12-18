@@ -1,7 +1,7 @@
 import { Global, Module, Provider } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { RabbitConfigInterface } from "@ssmovzh/chatterly-common-utils";
-import * as amqp from "amqplib";
+import { connect } from "amqplib";
 import { RabbitConsumerManagerService } from "~/modules/rabbit/rabbit-manager.service";
 import { ClientModule } from "~/modules/client/client.module";
 import { UserModule } from "~/modules/user/user.module";
@@ -13,8 +13,16 @@ const rabbitMQProviders: Provider[] = [
   {
     provide: RABBITMQ_CONNECTION,
     useFactory: async (configService: ConfigService) => {
-      const rabbitmqConfig = configService.get<RabbitConfigInterface>("rabbitConfig");
-      return await amqp.connect(rabbitmqConfig);
+      const rabbitConfig = configService.get<RabbitConfigInterface>("rabbitConfig");
+      return await connect(
+        rabbitConfig?.uri || {
+          protocol: rabbitConfig.protocol,
+          hostname: rabbitConfig.hostname,
+          port: rabbitConfig.port,
+          username: rabbitConfig.username,
+          password: rabbitConfig.password
+        }
+      );
     },
     inject: [ConfigService]
   }

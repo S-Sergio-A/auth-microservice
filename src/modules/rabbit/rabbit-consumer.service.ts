@@ -160,7 +160,15 @@ export class RabbitConsumerService implements OnModuleInit, OnModuleDestroy {
 
   protected async _recreateChannel(): Promise<void> {
     try {
-      const connection = await connect(this.rabbitConfig);
+      const connection = await connect(
+        this.rabbitConfig?.uri || {
+          protocol: this.rabbitConfig.protocol,
+          hostname: this.rabbitConfig.hostname,
+          port: this.rabbitConfig.port,
+          username: this.rabbitConfig.username,
+          password: this.rabbitConfig.password
+        }
+      );
       this.channel = await connection.createChannel();
       await this._initializeQueueAndConsume();
       this.logger.debug("RabbitMQ Channel successfully recreated.");
