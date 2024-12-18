@@ -20,7 +20,15 @@ export class RabbitService implements OnModuleInit, OnModuleDestroy {
     if (!!this.connection) {
       return;
     }
-    this.connection = await connect(this.RABBIT_CONFIG);
+    this.connection = await connect(
+      this.RABBIT_CONFIG?.uri || {
+        protocol: this.RABBIT_CONFIG.protocol,
+        hostname: this.RABBIT_CONFIG.hostname,
+        port: this.RABBIT_CONFIG.port,
+        username: this.RABBIT_CONFIG.username,
+        password: this.RABBIT_CONFIG.password
+      }
+    );
     console.log("RabbitMQ connection established.");
 
     this.connection.on("error", (err) => {
