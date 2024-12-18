@@ -3,7 +3,7 @@ name: Deploy Auth Microservice
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   test-build-deploy:
